@@ -1,30 +1,43 @@
 package tira
 
 import tira.persistance.domain
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.UUID
+import kotlin.io.path.exists
 
 class Tira private constructor(val projects: List<domain.Project>) {
     fun run() {
         println(
             "here is projects: ${projects}"
         )
+        println("want rename")
+        val task = projects[0].tasks()[0]
+
+        println("name before: ${task.name()}")
+        println("rename it")
+        task.rename(UUID.randomUUID().toString())
+        println("name after: ${task.name()}")
+
     }
 
     companion object {
-        // find app root dir and init instance
         fun init(): Tira {
-            val root = File(System.getProperty("user.home") + "/.tira")
+            val root = Path.of(System.getProperty("user.home"), ".tira")
             if (!root.exists()) {
-                root.mkdir()
+                Files.createDirectory(root)
                 println("created dir")
             }
             return Tira(
-                root
-                    .listFiles()
-                    .orEmpty()
-                    .map { f ->
-                        domain.Project.Companion.Dir.from(f)
+                Files
+                    .list(root)
+                    .map { p ->
+                        domain.Project.Companion.Dir.from(
+                            domain.Source.from(p)
+                        )
                     }
+                    .toList()
+                    .orEmpty()
             )
         }
     }
