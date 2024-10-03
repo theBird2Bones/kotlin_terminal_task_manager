@@ -16,6 +16,7 @@ object domain {
         fun tasks(): List<Task> //add task handler to add another tasks via that class
         fun rename(newName: String): Unit
         fun createTask(name: String): Unit
+        fun delete(task: Task): Unit
 
         companion object {
             //todo: caching Decorator
@@ -50,6 +51,15 @@ object domain {
                 override fun createTask(name: String) {
                     val task = Task.Companion.FileTask.create(name, source)
                     _tasks.add(task)
+                }
+
+                override fun delete(task: Task) {
+                    println("gonna remove task ${task}")
+                    println("tasks before ${tasks()}")
+                    _tasks.remove(task)
+                    task.delete()
+                    println("tasks after ${tasks()}")
+
                 }
 
                 companion object {
@@ -110,9 +120,11 @@ object domain {
 
 
     interface Task {
+        //todo: add content fetching
         fun props(): List<Property>
         fun name(): String
         fun rename(newName: String): Unit
+        fun delete(): Unit //smt like destroy
 
         companion object {
             class FileTask private constructor(
@@ -125,6 +137,19 @@ object domain {
 
                 override fun rename(newName: String) {
                     _name.rename(newName)
+                }
+
+                override fun delete(): Unit {
+                    Files.delete(Path(source.underlying.absolutePath()))
+                }
+
+                override fun equals(other: Any?): Boolean {
+                    return other != null ||
+                            if (other is Task) {
+                                other.name() == this.name()
+                            } else {
+                                false
+                            }
                 }
 
                 //todo: держать ли дескриптор открытым?

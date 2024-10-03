@@ -8,8 +8,12 @@ import kotlin.io.path.exists
 
 class Tira private constructor(val projects: List<domain.Project>) {
     fun run() {
-        println("want add task")
         val project = projects[0]
+        println("want delete task")
+        val t = project.tasks().filter { t -> t.name() == "new task.md" }[0]
+        project.delete(t)
+
+        println("want add task")
         project.createTask("new task")
 
         println("here is tasks${project.tasks()}")
@@ -17,13 +21,13 @@ class Tira private constructor(val projects: List<domain.Project>) {
         println("want rename project")
         project.rename("proj2")
 
-        println("want rename")
-        val task = projects[0].tasks()[0]
-
-        println("name before: ${task.name()}")
-        println("rename it")
-        task.rename(UUID.randomUUID().toString())
-        println("name after: ${task.name()}")
+//        println("want rename")
+//        val task = projects[0].tasks()[0]
+//
+//        println("name before: ${task.name()}")
+//        println("rename it")
+//        task.rename(UUID.randomUUID().toString())
+//        println("name after: ${task.name()}")
     }
 
     companion object {
