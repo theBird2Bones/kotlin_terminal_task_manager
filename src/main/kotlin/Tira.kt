@@ -8,9 +8,10 @@ import kotlin.io.path.exists
 
 class Tira private constructor(val projects: List<domain.Project>) {
     fun run() {
-        println(
-            "here is projects: ${projects}"
-        )
+        val project = projects[0]
+        println("want rename project")
+        project.rename("proj2")
+
         println("want rename")
         val task = projects[0].tasks()[0]
 
@@ -18,6 +19,10 @@ class Tira private constructor(val projects: List<domain.Project>) {
         println("rename it")
         task.rename(UUID.randomUUID().toString())
         println("name after: ${task.name()}")
+
+        println("---------------")
+
+
 
     }
 
@@ -33,7 +38,7 @@ class Tira private constructor(val projects: List<domain.Project>) {
                     .list(root)
                     .map { p ->
                         domain.Project.Companion.Dir.from(
-                            domain.Source.from(p)
+                            domain.Source.Companion.PathSource.from(p)
                         )
                     }
                     .toList()

@@ -14,6 +14,7 @@ object domain {
     interface Project {
         fun name(): String
         fun tasks(): List<Task> //add task handler to add another tasks via that class
+        fun rename(newName: String): Unit
 
         companion object {
             //todo: newtype for dir and file. can do it via inline classes
@@ -31,9 +32,12 @@ object domain {
                     .toList()
                     .orEmpty()
                     .map { p ->
-                        Task.Companion.FileTask.from(
-                            Source.from(p)
-                        )
+                        val file = ValidatedFile.from(Source.Companion.PathSource.from(p))
+                        Task.Companion.FileTask
+                            .from(
+                                Source.Companion.DependentSource
+                                    .from(file, source) //todo: what with nested folders for project?
+                            )
                     }
 
                 override fun toString(): String = "Dir(${source.underlying.absolutePath()})"
@@ -41,6 +45,8 @@ object domain {
                 override fun tasks(): List<Task> = _tasks
 
                 override fun name(): String = _name.name()
+
+                override fun rename(newName: String) = _name.rename(newName)
 
                 companion object {
                     fun from(dir: Source): Project {
@@ -55,9 +61,6 @@ object domain {
 
         }
     }
-
-    //todo: check if works with projects
-    //todo: фабричный метод на файлы и проекты
 
     abstract class Name private constructor(
         private val source: Source
@@ -82,7 +85,7 @@ object domain {
         fun rename(newName: String): Unit = synchronized(this) {
             _changed = true
 
-            val anotherName = unsafeMkName("${source.parent()}/${newName}")
+            val anotherName = unsafeMkName(newName)
 
             source.rename(anotherName)
             println("new path ${source.absolutePath()}")
@@ -197,30 +200,73 @@ object domain {
     }
 
     //todo: maybe here is another decorator for in mem changes with flushing in fs
-    //todo: must be interface
-    //todo: add another class kinda DependentSource to propogate path update and match them with actual file placement
-    class Source private constructor(
-        private var path: Path
-    ) {
-        fun isFile(): Boolean = path.isRegularFile()
-        fun isDirectory(): Boolean = path.isDirectory()
-        fun name(): String = path.fileName.toString()
-        fun parent(): String = path.parent.absolute().toString()
-        fun rename(name: String) = synchronized(this) {
-            val newPath = Path(name)
-            Files.move(path, newPath)
-            path = newPath
-        }
 
-        fun absolutePath() = path.toString()
+    interface Source {
+        fun isFile(): Boolean
+        fun isDirectory(): Boolean
+        fun name(): String
+        fun parent(): String
+        fun rename(name: String): Unit
+        fun absolutePath(): String
 
         companion object {
-            fun from(path: Path): Source {
-                if (!path.exists()) {
-                    throw Exception("Non existing source")
+            /**
+             * Describes path relative to _source_ position
+             */
+            class DependentSource private constructor(
+                private val source: Source,
+                private var path: Path
+            ) : Source {
+                override fun isFile(): Boolean = Path(source.absolutePath(), path.toString()).isRegularFile()
+                override fun isDirectory(): Boolean = Path(source.absolutePath(), path.toString()).isDirectory()
+                override fun name(): String = Path(source.absolutePath(), path.toString()).fileName.toString()
+                override fun parent(): String = Path(source.absolutePath(), path.toString()).parent.toString()
+                override fun rename(name: String) = synchronized(this) {
+                    val newPath = Path(name) //fixme: consider with no nested projects
+                    Files.move(
+                        Path(source.absolutePath(), path.toString()),
+                        Path(source.absolutePath(), newPath.toString())
+                    )
+                    path = newPath
                 }
-                return Source(path)
+
+                override fun absolutePath() = Path(source.absolutePath(), path.toString()).toString()
+
+                companion object {
+                    fun from(file: ValidatedFile, directory: ValidatedDirectory): Source {
+                        return DependentSource(
+                            directory.underlying,
+                            Path(file.underlying.name())
+                        )
+                    }
+                }
+            }
+
+            class PathSource(
+                private var path: Path
+            ) : Source {
+                override fun isFile(): Boolean = path.isRegularFile()
+                override fun isDirectory(): Boolean = path.isDirectory()
+                override fun name(): String = path.fileName.toString()
+                override fun parent(): String = path.parent.absolute().toString()
+                override fun rename(name: String) = synchronized(this) {
+                    val newPath = Path(path.parent.toString(), name)
+                    Files.move(path, newPath) //if exists, suggest to merge
+                    path = newPath
+                }
+
+                override fun absolutePath() = path.toString()
+
+                companion object {
+                    fun from(path: Path): Source {
+                        if (!path.exists()) {
+                            throw Exception("Non existing source")
+                        }
+                        return PathSource(path)
+                    }
+                }
             }
         }
     }
+
 }
