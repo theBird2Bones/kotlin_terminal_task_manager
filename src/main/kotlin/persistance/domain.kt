@@ -15,22 +15,20 @@ object domain {
         fun name(): String
         fun tasks(): List<Task> //add task handler to add another tasks via that class
         fun rename(newName: String): Unit
+        fun createTask(name: String): Unit
 
         companion object {
-            //todo: newtype for dir and file. can do it via inline classes
-            //todo: how to move files from directories within rename?
             //todo: caching Decorator
             class Dir private constructor(
                 private val source: ValidatedDirectory
             ) : Project {
                 private val _name = Name.Companion.DirectoryName(source)
-                private val _tasks: List<Task> = Files.list(
+                private val _tasks: MutableList<Task> = Files.list(
                     Path.of(
                         source.underlying.absolutePath()
                     )
                 )
                     .toList()
-                    .orEmpty()
                     .map { p ->
                         val file = ValidatedFile.from(Source.Companion.PathSource.from(p))
                         Task.Companion.FileTask
@@ -39,6 +37,7 @@ object domain {
                                     .from(file, source) //todo: what with nested folders for project?
                             )
                     }
+                    .toMutableList()
 
                 override fun toString(): String = "Dir(${source.underlying.absolutePath()})"
 
@@ -47,6 +46,11 @@ object domain {
                 override fun name(): String = _name.name()
 
                 override fun rename(newName: String) = _name.rename(newName)
+
+                override fun createTask(name: String) {
+                    val task = Task.Companion.FileTask.create(name, source)
+                    _tasks.add(task)
+                }
 
                 companion object {
                     fun from(dir: Source): Project {
@@ -138,6 +142,20 @@ object domain {
                         println("make task for ${file.absolutePath()}")
 
                         return FileTask(validatedFile)
+                    }
+
+                    fun create(name: String, projSource: ValidatedDirectory): Task {
+                        val file = Path(projSource.underlying.absolutePath(), "${name}.md")
+                        file.createFile() //fixme: report if exists
+
+                        return Task.Companion.FileTask(
+                            ValidatedFile.from(
+                                Source.Companion.DependentSource.from(
+                                    ValidatedFile.from(Source.Companion.PathSource(file)),
+                                    projSource
+                                )
+                            )
+                        )
                     }
                 }
 
@@ -251,7 +269,7 @@ object domain {
                 override fun parent(): String = path.parent.absolute().toString()
                 override fun rename(name: String) = synchronized(this) {
                     val newPath = Path(path.parent.toString(), name)
-                    Files.move(path, newPath) //if exists, suggest to merge
+                    Files.move(path, newPath) //fixme: if exists, suggest to merge
                     path = newPath
                 }
 
