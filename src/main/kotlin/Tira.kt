@@ -1,12 +1,12 @@
 package tira
 
-import tira.persistance.domain
+import tira.persistance.domain.*
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
 import kotlin.io.path.exists
 
-class Tira private constructor(val projects: List<domain.Project>) {
+class Tira private constructor(val projects: List<Project>) {
     fun run() {
         val project = projects[0]
         println("want delete task")
@@ -40,11 +40,7 @@ class Tira private constructor(val projects: List<domain.Project>) {
             return Tira(
                 Files
                     .list(root)
-                    .map { p ->
-                        domain.Project.Companion.Dir.from(
-                            domain.Source.Companion.PathSource.from(p)
-                        )
-                    }
+                    .map { Dir.from(PathSource.from(it)) }
                     .toList()
                     .orEmpty()
             )
