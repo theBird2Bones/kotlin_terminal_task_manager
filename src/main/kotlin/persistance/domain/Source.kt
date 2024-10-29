@@ -14,7 +14,12 @@ interface Source {
     fun parent(): String
     fun rename(name: String): Unit
     fun absolutePath(): String
+//    fun info(): SourceInfo
 }
+
+class SourceInfo(
+    val content: String
+)
 
 /**
  * Describes path relative to _source_ position

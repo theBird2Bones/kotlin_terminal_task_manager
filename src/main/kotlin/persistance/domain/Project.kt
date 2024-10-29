@@ -6,7 +6,7 @@ import java.nio.file.Path
 
 interface Project {
     fun name(): String
-    fun tasks(): List<Task> //add task handler to add another tasks via that class
+    fun tasks(): MutableList<Task> //add task handler to add another tasks via that class
     fun rename(newName: String): Unit
     fun createTask(name: String): Unit
     fun delete(task: Task): Unit
@@ -34,7 +34,7 @@ class Dir private constructor(
 
     override fun toString(): String = "Dir(${source.underlying.absolutePath()})"
 
-    override fun tasks(): List<Task> = _tasks
+    override fun tasks(): MutableList<Task> = _tasks
 
     override fun name(): String = _name.name()
 
