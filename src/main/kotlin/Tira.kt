@@ -1,25 +1,29 @@
 package tira
 
 import tira.persistance.domain.*
+import tira.view.domain.Screen
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.UUID
 import kotlin.io.path.exists
 
-class Tira private constructor(val projects: List<Project>) {
+class Tira private constructor(val projects: MutableList<Project>) {
     fun run() {
-        val project = projects[0]
-        println("want delete task")
-        val t = project.tasks().filter { t -> t.name() == "new task.md" }[0]
-        project.delete(t)
+        val screen = Screen(projects)
+        screen.start()
 
-        println("want add task")
-        project.createTask("new task")
-
-        println("here is tasks${project.tasks()}")
-
-        println("want rename project")
-        project.rename("proj2")
+//        val project = projects[0]
+//        println("want delete task")
+//        val t = project.tasks().filter { t -> t.name() == "new task.md" }[0]
+//        project.delete(t)
+//
+//        println("want add task")
+//        project.createTask("new task")
+//
+//        println("here is tasks${project.tasks()}")
+//
+//        println("want rename project")
+//        project.rename("proj2")
 
 //        println("want rename")
 //        val task = projects[0].tasks()[0]
@@ -42,7 +46,6 @@ class Tira private constructor(val projects: List<Project>) {
                     .list(root)
                     .map { Dir.from(PathSource.from(it)) }
                     .toList()
-                    .orEmpty()
             )
         }
     }
