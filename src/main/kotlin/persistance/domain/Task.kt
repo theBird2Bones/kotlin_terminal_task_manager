@@ -11,6 +11,8 @@ interface Task {
     fun name(): String
     fun rename(newName: String): Unit
     fun delete(): Unit //smt like destroy
+
+    fun content(): Iterator<String>
 }
 
 class FileTask private constructor(
@@ -27,6 +29,11 @@ class FileTask private constructor(
 
     override fun delete(): Unit {
         Files.delete(Path(source.underlying.absolutePath()))
+    }
+
+    override fun content(): Iterator<String> {
+        //todo: replace getting abs path from source to Path class
+        return Files.readAllLines(Path(source.underlying.absolutePath())).iterator()
     }
 
     override fun equals(other: Any?): Boolean {
