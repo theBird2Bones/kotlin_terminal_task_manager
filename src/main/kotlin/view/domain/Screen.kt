@@ -23,7 +23,7 @@ class Screen(
     //todo: replace nailed TP with virtual space and dynamic sizing
     private val contentPane = ContentPane<Task>(screen, TerminalPosition(30, 0))
     private val taskPane = TaskPane.init(
-        screen,  contentPane
+        screen, contentPane
     )
 
     private val projectPane = ProjectPane.init(projects, taskPane, screen)
@@ -37,6 +37,7 @@ class Screen(
 
     fun start() {
         screen.startScreen()
+        projectPane.draw()
         screen.refresh()
 
         while (true) {
@@ -89,20 +90,26 @@ abstract class AbstractListNavigationPane<A>(
     protected abstract var cursor: TerminalPosition
     protected var current: A? = null
 
-    open var items = _items
+    open var items: MutableList<A> =
+        _items.let { elems ->
+            it = elems.listIterator()
+            if (it.hasNext()) {
+                current = it.next()
+            }
+            elems
+        }
         get() = field
         set(newItems) {
             field = newItems
             it = field.listIterator()
-//            if(it.hasNext()){
-//                // logic because of start from first element in list
-//                current = it.next()
-//            }
+            if (it.hasNext()) {
+                current = it.next()
+            }
         }
 
-    protected var it = items.listIterator()
+    protected var it: ListIterator<A>
 
-    fun draw() {
+    open fun draw() {
         if (items.isEmpty()) {
             TextCharacter.fromString("There is empty")
                 .forEachIndexed { idx, ch ->
@@ -114,7 +121,6 @@ abstract class AbstractListNavigationPane<A>(
         items.forEachIndexed { rowIdx, item ->
             val prepString = TextCharacter.fromString(item.name())
             if (rowIdx == 0) {
-                current = it.next() //todo: find better place
                 prepString
                     .forEachIndexed { idx, ch ->
                         screen.setCharacter(
@@ -146,7 +152,6 @@ class ProjectPane(
 ) : AbstractListNavigationPane<Project>(projects, screen) {
     override var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
         get() = field
-//    protected var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
 
     companion object {
         fun init(
@@ -164,10 +169,15 @@ class ProjectPane(
                 )
                 //todo: better logic for init drawing and total init
                 taskPane.items = projects.getOrNull(0)?.tasks() ?: mutableListOf()
-                pane.draw()
                 return pane
             }
         }
+    }
+
+    override fun draw() {
+        println("Draw project pane")
+        super.draw()
+        taskPane.draw()
     }
 
     //todo: invalidate first position when add first project after nothing. Next come from 1
@@ -179,18 +189,28 @@ class ProjectPane(
             return
         }
 
+        var newCurrent = it.next()
+        if(current == newCurrent){ // hint: bidirect iterator specific of calls next + prev results in same element
+            if(!it.hasNext()) return
+            newCurrent = it.next()
+        }
+
         TextCharacter.fromString(current!!.name())
             .forEachIndexed { idx, ch ->
                 screen.setCharacter(cursor.withRelativeColumn(idx), ch)
             }
+        println("ProjectPane.next unset current:${current}")
 
         cursor = cursor.withRelativeRow(1)
         if (!it.hasPrevious()) {
             it.next() // todo: will break on 1 element
             //todo: implement bidirect linked list
         }
-        current = it.next()
 
+        println("ProjectPane.next cursor updated: ${cursor}")
+        current = newCurrent
+
+        println("ProjectPane.next current updated: ${current}")
         TextCharacter.fromString(
             current!!.name(),
             TextColor.ANSI.DEFAULT,
@@ -203,10 +223,16 @@ class ProjectPane(
                 )
             }
 
-        taskPane.items = current?.tasks().orEmpty().toMutableList()
+        val newItems = current?.tasks().orEmpty().toMutableList()
+        taskPane.items = newItems
+        println("ProjectPane.next taskPane updated with items: ${newItems}")
+
         taskPane.draw()
+        println("ProjectPane.next taskPane drew")
+
         screen.refresh(Screen.RefreshType.AUTOMATIC)
-        //todo: refresh for tasks and content
+        println("ProjectPane.next screen refreshed")
+        println()
     }
 
     override fun prev() {
@@ -214,6 +240,11 @@ class ProjectPane(
 
         if (!it.hasPrevious()) {
             return
+        }
+        var newCurrent = it.previous()
+        if(current == newCurrent){
+            if(!it.hasPrevious()) return
+            newCurrent = it.previous()
         }
 
         // restore old current to default state
@@ -224,12 +255,17 @@ class ProjectPane(
                     ch
                 )
             }
+        println("ProjectPane.prev unset current:${current}")
+
         cursor = cursor.withRelativeRow(-1)
         if (!it.hasNext()) {
             it.previous() // todo: will break on 1 element
         }
-        current = it.previous()
 
+        println("ProjectPane.prev cursor updated: ${cursor}")
+        current = newCurrent
+
+        println("ProjectPane.prev current updated: ${current}")
         TextCharacter.fromString(
             current!!.name(),
             TextColor.ANSI.DEFAULT,
@@ -242,9 +278,16 @@ class ProjectPane(
                 )
             }
 
-        taskPane.items = current?.tasks().orEmpty().toMutableList()
+        val newItems = current?.tasks().orEmpty().toMutableList()
+        taskPane.items = newItems
+
+        println("ProjectPane.prev taskPane updated with items: ${newItems}")
         taskPane.draw()
+
+        println("ProjectPane.prev taskPane drew")
         screen.refresh(Screen.RefreshType.AUTOMATIC)
+        println("ProjectPane.next screen refreshed")
+        println()
     }
 }
 
@@ -265,7 +308,6 @@ class TaskPane(
                     TerminalPosition(10, 0), // todo: replace after assemble pane size
                     contentPane
                 )
-                pane.draw()
                 return pane
 
             }
@@ -285,9 +327,9 @@ class TaskPane(
             super.items = value
             cursor = positionShift
 
-            with(taskWithContent) {
-                contentPane.draw()
-            }
+//            with(taskWithContent) {
+//                contentPane.draw()
+//            }
         }
 
 
@@ -295,6 +337,12 @@ class TaskPane(
         //in case there is next element, current must be not null
         if (!it.hasNext()) {
             return
+        }
+
+        var newCurrent = it.next()
+        if(current == newCurrent){
+            if(!it.hasNext()) return
+            newCurrent = it.next()
         }
 
         TextCharacter.fromString(current!!.name())
@@ -308,7 +356,7 @@ class TaskPane(
             it.next() // todo: will break on 1 element
             //todo: implement bidirect linked list
         }
-        current = it.next()
+        current = newCurrent
 
         TextCharacter.fromString(
             current!!.name(),
@@ -337,6 +385,11 @@ class TaskPane(
             return
         }
 
+        var newCurrent = it.previous()
+        if(current == newCurrent){
+            if(!it.hasPrevious()) return
+            newCurrent = it.previous()
+        }
         // restore old current to default state
         TextCharacter.fromString(current!!.name())
             .forEachIndexed { idx, ch ->
@@ -349,7 +402,7 @@ class TaskPane(
         if (!it.hasNext()) {
             it.previous() // todo: will break on 1 element
         }
-        current = it.previous()
+        current = newCurrent
 
         TextCharacter.fromString(
             current!!.name(),
