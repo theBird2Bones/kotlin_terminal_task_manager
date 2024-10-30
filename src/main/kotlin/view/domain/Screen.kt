@@ -45,8 +45,19 @@ class Screen(
 
             //todo: add navigation profile with keys mapping
             when (input.character) {
-                'j' -> activePane.get(currentViewMode)?.next() ?: println("nothing to show")
-                'k' -> activePane.get(currentViewMode)?.prev() ?: println("nothing to show")
+                'j' -> activePane.get(currentViewMode)
+                    ?.next()
+                    ?.let {
+                        screen.refresh(Screen.RefreshType.AUTOMATIC)
+                    }
+                    ?: println("nothing to show")
+
+                'k' -> activePane.get(currentViewMode)
+                    ?.prev()
+                    ?.let {
+                        screen.refresh(Screen.RefreshType.AUTOMATIC)
+                    }
+                    ?: println("nothing to show")
                 'h' -> currentViewMode = ViewMode.Projects
                 'l' -> currentViewMode = ViewMode.Tasks
             }
@@ -54,12 +65,6 @@ class Screen(
             //todo: redraw if size changed
         }
     }
-}
-
-//todo: refactor it
-interface NavigationPane {
-    fun next(): Unit
-    fun prev(): Unit
 }
 
 interface WithName<A> {
@@ -80,6 +85,12 @@ interface WithContent<A> {
 val taskWithContent = object : WithContent<Task> {
     override fun Task?.content(): Iterator<String> = this?.content() ?: listOf("<empty>").iterator()
 
+}
+
+//todo: refactor it
+interface NavigationPane {
+    fun next(): Unit
+    fun prev(): Unit
 }
 
 context(WithName<A>)
@@ -120,7 +131,7 @@ abstract class AbstractListNavigationPane<A>(
 
         items.forEachIndexed { rowIdx, item ->
             val prepString = TextCharacter.fromString(item.name())
-            if (rowIdx == 0) {
+            if (item == current) {
                 prepString
                     .forEachIndexed { idx, ch ->
                         screen.setCharacter(
@@ -140,6 +151,39 @@ abstract class AbstractListNavigationPane<A>(
                     }
             }
         }
+    }
+
+    override fun next() {
+        if (!it.hasNext()) {
+            return
+        }
+
+        var newCurrent = it.next()
+        if (current == newCurrent) { // hint: bidirect iterator specific of calls next + prev results in same element
+            if (!it.hasNext()) return
+            newCurrent = it.next()
+        }
+        if (!it.hasPrevious()) {
+            it.next()
+        }
+
+        current = newCurrent
+    }
+
+    override fun prev() {
+        if (!it.hasPrevious()) {
+            return
+        }
+
+        var newCurrent = it.previous()
+        if (current == newCurrent) {
+            if (!it.hasPrevious()) return
+            newCurrent = it.previous()
+        }
+        if (!it.hasNext()) {
+            it.previous()
+        }
+        current = newCurrent
     }
 }
 
@@ -180,114 +224,18 @@ class ProjectPane(
         taskPane.draw()
     }
 
-    //todo: invalidate first position when add first project after nothing. Next come from 1
     override fun next() {
-        println("ProjectPane.next")
+        super.next()
+        taskPane.items = current?.tasks().orEmpty().toMutableList()
 
-        //in case there is next element, current must be not null
-        if (!it.hasNext()) {
-            return
-        }
-
-        var newCurrent = it.next()
-        if(current == newCurrent){ // hint: bidirect iterator specific of calls next + prev results in same element
-            if(!it.hasNext()) return
-            newCurrent = it.next()
-        }
-
-        TextCharacter.fromString(current!!.name())
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(cursor.withRelativeColumn(idx), ch)
-            }
-        println("ProjectPane.next unset current:${current}")
-
-        cursor = cursor.withRelativeRow(1)
-        if (!it.hasPrevious()) {
-            it.next() // todo: will break on 1 element
-            //todo: implement bidirect linked list
-        }
-
-        println("ProjectPane.next cursor updated: ${cursor}")
-        current = newCurrent
-
-        println("ProjectPane.next current updated: ${current}")
-        TextCharacter.fromString(
-            current!!.name(),
-            TextColor.ANSI.DEFAULT,
-            TextColor.Factory.fromString("#add8e6") //light blue
-        )
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-
-        val newItems = current?.tasks().orEmpty().toMutableList()
-        taskPane.items = newItems
-        println("ProjectPane.next taskPane updated with items: ${newItems}")
-
-        taskPane.draw()
-        println("ProjectPane.next taskPane drew")
-
-        screen.refresh(Screen.RefreshType.AUTOMATIC)
-        println("ProjectPane.next screen refreshed")
-        println()
+        draw()
     }
 
     override fun prev() {
-        println("ProjectPane.prev")
+        super.prev()
+        taskPane.items = current?.tasks().orEmpty().toMutableList()
 
-        if (!it.hasPrevious()) {
-            return
-        }
-        var newCurrent = it.previous()
-        if(current == newCurrent){
-            if(!it.hasPrevious()) return
-            newCurrent = it.previous()
-        }
-
-        // restore old current to default state
-        TextCharacter.fromString(current!!.name())
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-        println("ProjectPane.prev unset current:${current}")
-
-        cursor = cursor.withRelativeRow(-1)
-        if (!it.hasNext()) {
-            it.previous() // todo: will break on 1 element
-        }
-
-        println("ProjectPane.prev cursor updated: ${cursor}")
-        current = newCurrent
-
-        println("ProjectPane.prev current updated: ${current}")
-        TextCharacter.fromString(
-            current!!.name(),
-            TextColor.ANSI.DEFAULT,
-            TextColor.Factory.fromString("#add8e6") //light blue
-        )
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-
-        val newItems = current?.tasks().orEmpty().toMutableList()
-        taskPane.items = newItems
-
-        println("ProjectPane.prev taskPane updated with items: ${newItems}")
-        taskPane.draw()
-
-        println("ProjectPane.prev taskPane drew")
-        screen.refresh(Screen.RefreshType.AUTOMATIC)
-        println("ProjectPane.next screen refreshed")
-        println()
+        draw()
     }
 }
 
@@ -326,102 +274,27 @@ class TaskPane(
         set(value) {
             super.items = value
             cursor = positionShift
-
-//            with(taskWithContent) {
-//                contentPane.draw()
-//            }
         }
 
 
     override fun next() {
-        //in case there is next element, current must be not null
-        if (!it.hasNext()) {
-            return
-        }
+        super.next()
 
-        var newCurrent = it.next()
-        if(current == newCurrent){
-            if(!it.hasNext()) return
-            newCurrent = it.next()
-        }
-
-        TextCharacter.fromString(current!!.name())
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(cursor.withRelativeColumn(idx), ch)
-            }
-
-        cursor = cursor.withRelativeRow(1)
-        println("cursor after: ${cursor}")
-        if (!it.hasPrevious()) {
-            it.next() // todo: will break on 1 element
-            //todo: implement bidirect linked list
-        }
-        current = newCurrent
-
-        TextCharacter.fromString(
-            current!!.name(),
-            TextColor.ANSI.DEFAULT,
-            TextColor.Factory.fromString("#add8e6") //light blue
-        )
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-
+        draw()
         contentPane.source = current
         with(taskWithContent) {
             contentPane.draw()
         }
-
-        screen.refresh(Screen.RefreshType.AUTOMATIC) //todo: moveout screen refreshing out of here to call site inside map
-        //todo: refresh for tasks and content
     }
 
-    //todo: fix going out of screen when first move is prev()
     override fun prev() {
-        if (!it.hasPrevious()) {
-            return
-        }
+        super.prev()
 
-        var newCurrent = it.previous()
-        if(current == newCurrent){
-            if(!it.hasPrevious()) return
-            newCurrent = it.previous()
-        }
-        // restore old current to default state
-        TextCharacter.fromString(current!!.name())
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-        cursor = cursor.withRelativeRow(-1)
-        if (!it.hasNext()) {
-            it.previous() // todo: will break on 1 element
-        }
-        current = newCurrent
-
-        TextCharacter.fromString(
-            current!!.name(),
-            TextColor.ANSI.DEFAULT,
-            TextColor.Factory.fromString("#add8e6") //light blue
-        )
-            .forEachIndexed { idx, ch ->
-                screen.setCharacter(
-                    cursor.withRelativeColumn(idx),
-                    ch
-                )
-            }
-
+        draw()
         contentPane.source = current
         with(taskWithContent) {
             contentPane.draw()
         }
-
-        screen.refresh(Screen.RefreshType.AUTOMATIC)
     }
 }
 
