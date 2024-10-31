@@ -1,6 +1,7 @@
 package tira.view.domain
 
 import com.googlecode.lanterna.TerminalPosition
+import com.googlecode.lanterna.TerminalSize
 import com.googlecode.lanterna.TextCharacter
 import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.screen.Screen
@@ -9,8 +10,41 @@ import tira.predef.props.*
 import tira.persistance.domain.Project
 import tira.persistance.domain.Task
 
+interface PaneSize {
+    fun width(): Int
+    fun height(): Int
+}
 
-//todo: refactor it
+interface PaneShift {
+    fun offset(): TerminalPosition
+}
+
+class DynamicPaneShift(
+    private val offsetInPercent: Int,
+    private val screen: Screen
+) : PaneShift {
+    override fun offset(): TerminalPosition {
+        return TerminalPosition.TOP_LEFT_CORNER.withRelativeColumn(
+            screen.terminalSize.columns * offsetInPercent / 100
+        )
+    }
+}
+
+class DynamicPaneSize(
+    private val widthInPercent: Int,
+    private val screen: Screen
+) : PaneSize {
+    override fun width(): Int {
+        return screen.terminalSize.columns * widthInPercent / 100
+    }
+
+    override fun height(): Int {
+        return screen.terminalSize.rows
+    }
+}
+
+//todo: add blank pane.class  to clean spaces between panes
+
 interface NavigationPane {
     fun next(): Unit
     fun prev(): Unit
@@ -19,10 +53,13 @@ interface NavigationPane {
 context(WithName<A>)
 abstract class AbstractListNavigationPane<A>(
     _items: MutableList<A>,
-    private val screen: Screen
+    private val screen: Screen,
+    private val size: PaneSize
 ) : NavigationPane {
     protected abstract var cursor: TerminalPosition
     protected var current: A? = null
+
+//    private var startOffset: Int = 0 //todo: is neccessary for screen scrolling?
 
     open var items: MutableList<A> =
         _items.let { elems ->
@@ -45,33 +82,42 @@ abstract class AbstractListNavigationPane<A>(
 
     open fun draw() {
         if (items.isEmpty()) {
-            TextCharacter.fromString("There is empty")
-                .forEachIndexed { idx, ch ->
-                    screen.setCharacter(cursor.withRelativeColumn(idx), ch)
-                }
+            printText("There is empty", cursor)
             return
         }
 
-        items.forEachIndexed { rowIdx, item ->
-            val prepString = TextCharacter.fromString(item.name())
-            if (item == current) {
-                prepString
-                    .forEachIndexed { idx, ch ->
-                        screen.setCharacter(
-                            cursor.withRelative(idx, rowIdx),
-                            ch
-                                .withBackgroundColor(TextColor.Factory.fromString("#add8e6")) //light blue
-                                .withForegroundColor(TextColor.ANSI.DEFAULT)
-                        )
-                    }
+        for (rowIdx in 0 until size.height()) {
+            if (rowIdx < items.size) {
+                if (items[rowIdx] == current) {
+                    printText(
+                        items[rowIdx].name(),
+                        cursor.withRelativeRow(rowIdx),
+                        background = TextColor.Factory.fromString("#add8e6") //todo: add to config
+                    )
+                } else {
+                    printText(items[rowIdx].name(), cursor.withRelativeRow(rowIdx))
+                }
             } else {
-                prepString
-                    .forEachIndexed { idx, ch ->
-                        screen.setCharacter(
-                            cursor.withRelative(idx, rowIdx),
-                            ch
-                        )
-                    }
+                printText("", cursor.withRelativeRow(rowIdx))
+            }
+        }
+    }
+
+    private fun printText(
+        text: String,
+        start: TerminalPosition,
+        foreground: TextColor = TextColor.ANSI.DEFAULT,
+        background: TextColor = TextColor.ANSI.DEFAULT
+    ) {
+        val prepText = TextCharacter.fromString(text, foreground, background)
+
+        for (idx in (0 until size.width())) {
+            if (idx < size.width() - 1 && idx < prepText.size) {
+                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx])
+            } else if (idx < prepText.size) {
+                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx].withCharacter('~'))
+            } else {
+                screen.setCharacter(start.withRelativeColumn(idx), TextCharacter.DEFAULT_CHARACTER)
             }
         }
     }
@@ -115,8 +161,8 @@ class ProjectPane(
     private val projects: MutableList<Project>,
     private val taskPane: TaskPane,
     private val screen: Screen,
-//    private var size: TerminalSize
-) : AbstractListNavigationPane<Project>(projects, screen) {
+    private var size: PaneSize
+) : AbstractListNavigationPane<Project>(projects, screen, size) {
     override var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
         get() = field
 
@@ -125,15 +171,10 @@ class ProjectPane(
             projects: MutableList<Project>,
             taskPane: TaskPane,
             screen: Screen,
-//            size: TerminalSize
+            size: PaneSize
         ): ProjectPane {
             with(projectWithNameInst) {
-                val pane = ProjectPane(
-                    projects,
-                    taskPane,
-                    screen
-//                , size
-                )
+                val pane = ProjectPane(projects, taskPane, screen, size)
                 taskPane.items = projects.getOrNull(0)?.tasks() ?: mutableListOf()
                 return pane
             }
@@ -164,19 +205,23 @@ class ProjectPane(
 context(WithName<Task>)
 class TaskPane(
     private val screen: Screen,
-    private val positionShift: TerminalPosition,
-    private val contentPane: ContentPane<Task>
-) : AbstractListNavigationPane<Task>(mutableListOf(), screen) {
+    private val positionShift: PaneShift,
+    private val contentPane: ContentPane<Task>,
+    private val size: PaneSize
+) : AbstractListNavigationPane<Task>(mutableListOf(), screen, size) {
     companion object {
         fun init(
             screen: Screen,
-            contentPane: ContentPane<Task>
+            contentPane: ContentPane<Task>,
+            size: PaneSize,
+            shift: PaneShift
         ): TaskPane {
             with(taskWithNameInst) {
                 val pane = TaskPane(
                     screen,
-                    TerminalPosition(10, 0), // todo: replace after assemble pane size
-                    contentPane
+                    shift,
+                    contentPane,
+                    size
                 )
                 return pane
 
@@ -185,7 +230,7 @@ class TaskPane(
         }
     }
 
-    override var cursor: TerminalPosition = positionShift
+    override var cursor: TerminalPosition = positionShift.offset()
         get() = field
         set(value) {
             field = value
@@ -195,7 +240,8 @@ class TaskPane(
         get() = super.items
         set(value) {
             super.items = value
-            cursor = positionShift
+            val newOffset = positionShift.offset()
+            cursor = newOffset
         }
 
 
@@ -222,14 +268,15 @@ class TaskPane(
 
 class ContentPane<A>(
     private val screen: Screen,
-    positionShift: TerminalPosition
+    private val size: PaneSize,
+    positionShift: PaneShift
 ) {
     var source: A? = null
         set(value) {
             field = value
         }
 
-    var cursor: TerminalPosition = positionShift
+    var cursor: TerminalPosition = positionShift.offset()
         get() = field
         set(value) {
             field = value
@@ -237,18 +284,34 @@ class ContentPane<A>(
 
     context(WithContent<A>)
     fun draw(): Unit {
-        var rowIdx = 0;
-        source.content()
-            .forEach {
-                TextCharacter.fromString(it)
-                    .forEachIndexed { idx, ch ->
-                        screen.setCharacter(
-                            cursor.withRelative(idx, rowIdx),
-                            ch
-                        )
-                    }
-                rowIdx++;
+        val content = source.content()
+        for (idx in 0 until size.height()) {
+            if (content.hasNext()) {
+                printText(content.next(), cursor.withRelativeRow(idx))
+            } else {
+                printText("", cursor.withRelativeRow(idx))
             }
+
+        }
+    }
+
+    private fun printText(
+        text: String,
+        start: TerminalPosition,
+        foreground: TextColor = TextColor.ANSI.DEFAULT,
+        background: TextColor = TextColor.ANSI.DEFAULT
+    ) {
+        val prepText = TextCharacter.fromString(text, foreground, background)
+
+        for (idx in (0 until size.width())) {
+            if (idx < size.width() - 1 && idx < prepText.size) {
+                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx])
+            } else if (idx < prepText.size) {
+                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx].withCharacter('~'))
+            } else {
+                screen.setCharacter(start.withRelativeColumn(idx), TextCharacter.DEFAULT_CHARACTER)
+            }
+        }
     }
 }
 
