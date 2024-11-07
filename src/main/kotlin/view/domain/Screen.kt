@@ -1,6 +1,5 @@
 package tira.view.domain
 
-import com.googlecode.lanterna.TerminalPosition
 import com.googlecode.lanterna.screen.Screen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 
@@ -23,7 +22,13 @@ class Screen(
         DynamicPaneShift(20, screen)
     )
 
-    private val projectPane = ProjectPane.init(projects, taskPane, screen, DynamicPaneSize(20, screen))
+    private val projectPane = ProjectPane.init(
+        projects,
+        taskPane,
+        screen,
+        DynamicPaneSize(20, screen),
+        DynamicPaneShift(0, screen)
+    )
 
 
     private val activePane =
@@ -50,7 +55,6 @@ class Screen(
             //todo: add navigation profile with keys mapping
             //todo: add squashing for near events
             when (input.character) {
-                //ask: Работают ли корутины с ванильным synchronized? там же один тред стучится в рекурсивный мьюетекс
                 'j' -> activePane.get(currentViewMode)
                     ?.next()
                     ?.let {
@@ -64,6 +68,8 @@ class Screen(
                         screen.refresh(Screen.RefreshType.AUTOMATIC)
                     }
                     ?: println("nothing to show")
+
+                'r' -> activePane.get(currentViewMode)?.processRename()
 
                 'h' -> currentViewMode = ViewMode.Projects
                 'l' -> currentViewMode = ViewMode.Tasks

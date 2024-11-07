@@ -19,7 +19,7 @@ abstract class Name protected constructor(
             _changed = false
             _name = source.name()
         }
-        return _name
+        return _name.replace(".md", "")
     }
 
     fun rename(newName: String): Unit = synchronized(this) {
