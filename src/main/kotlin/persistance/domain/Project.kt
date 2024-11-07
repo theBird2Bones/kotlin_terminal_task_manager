@@ -1,13 +1,14 @@
 package tira.persistance.domain
 
 import tira.persistance.domain.newtypes.*
+import tira.predef.props.WithRename
 import java.nio.file.Files
 import java.nio.file.Path
 
-interface Project {
+interface Project: WithRename {
     fun name(): String
     fun tasks(): MutableList<Task> //add task handler to add another tasks via that class
-    fun rename(newName: String): Unit
+    override fun rename(newName: String): Unit
     fun createTask(name: String): Unit
     fun delete(task: Task): Unit
 }

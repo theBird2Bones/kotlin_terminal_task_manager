@@ -1,15 +1,16 @@
 package tira.persistance.domain
 
 import tira.persistance.domain.newtypes.*
+import tira.predef.props.WithRename
 import java.nio.file.Files
 
 import kotlin.io.path.*
 
-interface Task {
+interface Task: WithRename {
     //todo: add content fetching
     fun props(): List<Property>
     fun name(): String
-    fun rename(newName: String): Unit
+    override fun rename(newName: String): Unit
     fun delete(): Unit //smt like destroy
 
     fun content(): Iterator<String>

@@ -1,9 +1,9 @@
 package tira.view.domain
 
 import com.googlecode.lanterna.TerminalPosition
-import com.googlecode.lanterna.TerminalSize
 import com.googlecode.lanterna.TextCharacter
 import com.googlecode.lanterna.TextColor
+import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.screen.Screen
 
 import tira.predef.props.*
@@ -43,19 +43,23 @@ class DynamicPaneSize(
     }
 }
 
-//todo: add blank pane.class  to clean spaces between panes
+interface WithRenameProcessing {
+    fun processRename(): Unit
+}
 
+//todo: add blank pane.class  to clean spaces between panes
 interface NavigationPane {
     fun next(): Unit
     fun prev(): Unit
 }
 
 context(WithName<A>)
-abstract class AbstractListNavigationPane<A>(
+abstract class AbstractListNavigationPane<A : WithRename>(
     _items: MutableList<A>,
     private val screen: Screen,
-    private val size: PaneSize
-) : NavigationPane {
+    private val size: PaneSize,
+    private val shift: PaneShift
+) : NavigationPane, WithRenameProcessing {
     protected abstract var cursor: TerminalPosition
     protected var current: A? = null
 
@@ -86,19 +90,21 @@ abstract class AbstractListNavigationPane<A>(
             return
         }
 
+        val drawCursor = shift.offset()
+
         for (rowIdx in 0 until size.height()) {
             if (rowIdx < items.size) {
                 if (items[rowIdx] == current) {
                     printText(
                         items[rowIdx].name(),
-                        cursor.withRelativeRow(rowIdx),
+                        drawCursor.withRelativeRow(rowIdx),
                         background = TextColor.Factory.fromString("#add8e6") //todo: add to config
                     )
                 } else {
-                    printText(items[rowIdx].name(), cursor.withRelativeRow(rowIdx))
+                    printText(items[rowIdx].name(), drawCursor.withRelativeRow(rowIdx))
                 }
             } else {
-                printText("", cursor.withRelativeRow(rowIdx))
+                printText("", drawCursor.withRelativeRow(rowIdx))
             }
         }
     }
@@ -136,6 +142,7 @@ abstract class AbstractListNavigationPane<A>(
             it.next()
         }
 
+        cursor = cursor.withRelativeRow(1)
         current = newCurrent
     }
 
@@ -152,7 +159,41 @@ abstract class AbstractListNavigationPane<A>(
         if (!it.hasNext()) {
             it.previous()
         }
+        cursor = cursor.withRelativeRow(-1)
         current = newCurrent
+    }
+
+    override fun processRename() {
+        if (current == null) return
+
+        var interrupted = false
+
+        var newName = StringBuilder(current!!.name())
+
+        while (!interrupted) {
+            screen.pollInput()
+                ?.let { res ->
+                    if (res.keyType == KeyType.Enter) {
+                        println("here is Enter inside Pane")
+                        current!!.rename(newName.toString())
+                        interrupted = true
+                    } else if (res.keyType == KeyType.Escape) {
+                        draw()
+                        screen.refresh()
+                        return
+                    } else if (res.keyType == KeyType.Backspace) {
+                        if (newName.toString().length > 0) {
+                            newName = StringBuilder(newName.dropLast(1))
+                            printText(newName.toString(), cursor)
+                        }
+                    } else {
+                        newName.append(res.character.toString())
+                        printText(newName.toString(), cursor)
+                        println("cursor is ${cursor}")
+                    }
+                    screen.refresh()
+                } ?: continue
+        }
     }
 }
 
@@ -161,8 +202,10 @@ class ProjectPane(
     private val projects: MutableList<Project>,
     private val taskPane: TaskPane,
     private val screen: Screen,
-    private var size: PaneSize
-) : AbstractListNavigationPane<Project>(projects, screen, size) {
+    private var size: PaneSize,
+    private var shift: PaneShift
+) : AbstractListNavigationPane<Project>(projects, screen, size, shift) {
+
     override var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
         get() = field
 
@@ -171,10 +214,11 @@ class ProjectPane(
             projects: MutableList<Project>,
             taskPane: TaskPane,
             screen: Screen,
-            size: PaneSize
+            size: PaneSize,
+            shift: PaneShift
         ): ProjectPane {
             with(projectWithNameInst) {
-                val pane = ProjectPane(projects, taskPane, screen, size)
+                val pane = ProjectPane(projects, taskPane, screen, size, shift)
                 taskPane.items = projects.getOrNull(0)?.tasks() ?: mutableListOf()
                 return pane
             }
@@ -208,7 +252,7 @@ class TaskPane(
     private val positionShift: PaneShift,
     private val contentPane: ContentPane<Task>,
     private val size: PaneSize
-) : AbstractListNavigationPane<Task>(mutableListOf(), screen, size) {
+) : AbstractListNavigationPane<Task>(mutableListOf(), screen, size, positionShift) {
     companion object {
         fun init(
             screen: Screen,
