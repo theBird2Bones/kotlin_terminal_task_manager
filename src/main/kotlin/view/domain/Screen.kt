@@ -5,9 +5,10 @@ import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 
 import tira.persistance.domain.Project
 import tira.persistance.domain.Task
+import tira.predef.std.VisibleListElements
 
 class Screen(
-    projects: MutableList<Project>
+    projects: List<Project>
 ) {
     private val tf = DefaultTerminalFactory()
     private val screen = tf.createScreen()
@@ -23,7 +24,7 @@ class Screen(
     )
 
     private val projectPane = ProjectPane.init(
-        projects,
+        VisibleListElements(projects),
         taskPane,
         screen,
         DynamicPaneSize(20, screen),
