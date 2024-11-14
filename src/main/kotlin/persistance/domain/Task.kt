@@ -6,7 +6,7 @@ import java.nio.file.Files
 
 import kotlin.io.path.*
 
-interface Task: WithRename {
+interface Task : WithRename {
     //todo: add content fetching
     fun props(): List<Property>
     fun name(): String
@@ -73,4 +73,28 @@ class FileTask private constructor(
         }
     }
 
+}
+
+class InMemoryTask(
+    private var name: String
+) : Task {
+    override fun props(): List<Property> {
+        return emptyList()
+    }
+
+    override fun name(): String {
+        return name
+    }
+
+    override fun rename(newName: String) {
+        name = newName
+    }
+
+    override fun delete() {
+        TODO("Not yet implemented")
+    }
+
+    override fun content(): Iterator<String> {
+        return listOf("").iterator()
+    }
 }

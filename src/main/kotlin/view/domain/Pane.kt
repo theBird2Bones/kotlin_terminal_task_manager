@@ -5,10 +5,9 @@ import com.googlecode.lanterna.TextCharacter
 import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.screen.Screen
+import tira.persistance.domain.*
 
 import tira.predef.props.*
-import tira.persistance.domain.Project
-import tira.persistance.domain.Task
 import tira.predef.std.VisibleElements
 import tira.predef.std.VisibleListElements
 
@@ -46,7 +45,7 @@ class DynamicPaneSize(
 }
 
 interface WithRenameProcessing {
-    fun processRename(): Unit
+    fun processRename(): RenameProcessing?
 }
 
 //todo: add blank pane.class  to clean spaces between panes
@@ -130,8 +129,8 @@ abstract class AbstractListNavigationPane<A : WithRename>(
         cursor = cursor.withRelativeRow(-1)
     }
 
-    override fun processRename() {
-        if (items.current() == null) return
+    override fun processRename(): RenameProcessing? {
+        if (items.current() == null) return null
 
         var interrupted = false
 
@@ -147,7 +146,7 @@ abstract class AbstractListNavigationPane<A : WithRename>(
                     } else if (res.keyType == KeyType.Escape) {
                         draw()
                         screen.refresh()
-                        return
+                        return RenameProcessing.Aborted
                     } else if (res.keyType == KeyType.Backspace) {
                         if (newName.toString().length > 0) {
                             newName = StringBuilder(newName.dropLast(1))
@@ -161,7 +160,11 @@ abstract class AbstractListNavigationPane<A : WithRename>(
                     screen.refresh()
                 } ?: continue
         }
+
+        return RenameProcessing.Succeed
     }
+
+    abstract fun processElementCreation()
 }
 
 context(WithName<Project>)
@@ -210,6 +213,10 @@ class ProjectPane(
         taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
 
         draw()
+    }
+
+    override fun processElementCreation() {
+        TODO("Not yet implemented")
     }
 }
 
@@ -279,6 +286,41 @@ class TaskPane(
         with(taskWithContent) {
             contentPane.draw()
         }
+    }
+
+    override fun processElementCreation() {
+        val tmp = InMemoryTask("")
+
+        items.insert(tmp)
+        next()
+        screen.refresh()
+        when (processRename()) {
+            RenameProcessing.Aborted -> {
+                items.remove()
+                cursor = cursor.withRelativeRow(-1)
+            }
+
+            RenameProcessing.Succeed -> {
+                items.current()?.name()?.let { name ->
+                    if (name == "") {
+                        items.remove()
+                        cursor = cursor.withRelativeRow(-1)
+                    }
+                    project?.createTask(name)
+                }
+            }
+
+            null -> return // мб nothing todo. Какая мета в котлине на Option[Smt] когда не обработали что-то из-за гарды?
+        }
+
+        draw()
+        screen.refresh()
+    }
+
+    private var project: Project? = null
+
+    fun setAccountableProject(project: Project) {
+        this.project = project
     }
 }
 

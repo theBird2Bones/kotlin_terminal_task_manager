@@ -72,8 +72,17 @@ class Screen(
 
                 'r' -> activePane.get(currentViewMode)?.processRename()
 
+                'N' -> if (input.isCtrlDown) {
+                    activePane.get(currentViewMode)?.processElementCreation()
+                } else continue
+
                 'h' -> currentViewMode = ViewMode.Projects
-                'l' -> currentViewMode = ViewMode.Tasks
+                'l' -> {
+                    taskPane.setAccountableProject(
+                        projectPane.items.current()!!
+                    )
+                    currentViewMode = ViewMode.Tasks
+                }
             }
 
             //todo: redraw if size changed
