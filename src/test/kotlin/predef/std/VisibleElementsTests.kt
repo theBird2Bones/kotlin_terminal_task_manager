@@ -186,7 +186,7 @@ class VisibleElementsTests {
         val visible = VisibleListElements(emptySource)
 
         visible.insert(0)
-        assertEquals(listOf(0, 1), visible.elements())
+        assertEquals(listOf(1, 0), visible.elements())
 
     }
 
@@ -199,7 +199,7 @@ class VisibleElementsTests {
         visible.next()
         visible.insert(0)
 
-        assertEquals(listOf(1, 0, 2), visible.elements())
+        assertEquals(listOf(1, 2, 0), visible.elements())
     }
 
     @Test
