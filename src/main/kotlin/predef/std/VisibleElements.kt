@@ -13,6 +13,7 @@ interface VisibleElements<A> {
     fun isEmpty(): Boolean
 
     fun insert(element: A)
+    fun remove()
 }
 
 class VisibleListElements<A>(elements: List<A>) : VisibleElements<A> {
@@ -35,7 +36,7 @@ class VisibleListElements<A>(elements: List<A>) : VisibleElements<A> {
         return current() ?: throw NoSuchElementException("Has no previous element")
     }
 
-    private fun isInBound(nextIndex: Int): Boolean = (nextIndex >= 0 && nextIndex < _elements.size)
+    private fun isInBound(idx: Int): Boolean = (idx >= 0 && idx < _elements.size)
 
     override fun current(): A? {
         if (!isInBound(idx)) return null
@@ -44,6 +45,21 @@ class VisibleListElements<A>(elements: List<A>) : VisibleElements<A> {
 
     override fun elements(): List<A> = _elements.toList()
     override fun isEmpty(): Boolean = _elements.isEmpty()
+
+    /*
+     * Trying to move back after removing current element.
+     * In position 1 : <<2>> : 3 new current will be 1 and collection is 1 : 3.
+     * In position <<1>> : 2 : 3 new current will be 2 and collection is 2 : 3.
+     * In position 1 : 2 : <<3>> new current will be 3 and collection is 1 : 2.
+     */
+    override fun remove() {
+        if (_elements.isEmpty()) throw IllegalStateException("Collection is empty")
+        _elements.removeAt(idx)
+        if (hasPrevious()) {
+            idx -= 1
+        }
+
+    }
 
     override fun insert(element: A) {
         _elements.add(idx, element)

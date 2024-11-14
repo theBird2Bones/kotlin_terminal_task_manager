@@ -201,4 +201,42 @@ class VisibleElementsTests {
 
         assertEquals(listOf(1, 0, 2), visible.elements())
     }
+
+    @Test
+    fun `remove() drops last element`() {
+        val emptySource: List<Int> = listOf(1)
+
+        val visible = VisibleListElements(emptySource)
+
+        visible.remove()
+
+        assertEquals(null, visible.current())
+    }
+
+    @Test
+    fun `remove() drops current element with shifting forward at first element`() {
+        val emptySource: List<Int> = listOf(1, 2, 3)
+
+        val visible = VisibleListElements(emptySource)
+
+        visible.remove()
+
+        assertEquals(listOf(2,3), visible.elements())
+        assertEquals(2, visible.current())
+    }
+
+    @Test
+    fun `remove() drops current element with shifting back at last element`() {
+        val emptySource: List<Int> = listOf(1, 2, 3)
+
+        val visible = VisibleListElements(emptySource)
+
+        visible.next()
+        visible.next()
+
+        visible.remove()
+
+        assertEquals(listOf(1,2), visible.elements())
+        assertEquals(2, visible.current())
+    }
 }
