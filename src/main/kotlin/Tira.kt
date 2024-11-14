@@ -7,7 +7,7 @@ import java.nio.file.Path
 import java.util.UUID
 import kotlin.io.path.exists
 
-class Tira private constructor(val projects: MutableList<Project>) {
+class Tira private constructor(val projects: List<Project>) {
     fun run() {
         val screen = Screen(projects)
         screen.start()

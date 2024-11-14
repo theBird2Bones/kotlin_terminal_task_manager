@@ -9,6 +9,8 @@ import com.googlecode.lanterna.screen.Screen
 import tira.predef.props.*
 import tira.persistance.domain.Project
 import tira.persistance.domain.Task
+import tira.predef.std.VisibleElements
+import tira.predef.std.VisibleListElements
 
 interface PaneSize {
     fun width(): Int
@@ -55,34 +57,14 @@ interface NavigationPane {
 
 context(WithName<A>)
 abstract class AbstractListNavigationPane<A : WithRename>(
-    _items: MutableList<A>,
+    open var items: VisibleElements<A>,
     private val screen: Screen,
     private val size: PaneSize,
     private val shift: PaneShift
 ) : NavigationPane, WithRenameProcessing {
     protected abstract var cursor: TerminalPosition
-    protected var current: A? = null
 
 //    private var startOffset: Int = 0 //todo: is neccessary for screen scrolling?
-
-    open var items: MutableList<A> =
-        _items.let { elems ->
-            it = elems.listIterator()
-            if (it.hasNext()) {
-                current = it.next()
-            }
-            elems
-        }
-        get() = field
-        set(newItems) {
-            field = newItems
-            it = field.listIterator()
-            if (it.hasNext()) {
-                current = it.next()
-            }
-        }
-
-    protected var it: ListIterator<A>
 
     open fun draw() {
         if (items.isEmpty()) {
@@ -92,16 +74,18 @@ abstract class AbstractListNavigationPane<A : WithRename>(
 
         val drawCursor = shift.offset()
 
+        val elements = items.elements()
+
         for (rowIdx in 0 until size.height()) {
-            if (rowIdx < items.size) {
-                if (items[rowIdx] == current) {
+            if (rowIdx < elements.size) {
+                if (elements[rowIdx] == items.current()) {
                     printText(
-                        items[rowIdx].name(),
+                        elements[rowIdx].name(),
                         drawCursor.withRelativeRow(rowIdx),
                         background = TextColor.Factory.fromString("#add8e6") //todo: add to config
                     )
                 } else {
-                    printText(items[rowIdx].name(), drawCursor.withRelativeRow(rowIdx))
+                    printText(elements[rowIdx].name(), drawCursor.withRelativeRow(rowIdx))
                 }
             } else {
                 printText("", drawCursor.withRelativeRow(rowIdx))
@@ -129,53 +113,36 @@ abstract class AbstractListNavigationPane<A : WithRename>(
     }
 
     override fun next() {
-        if (!it.hasNext()) {
+        if (!items.hasNext()) {
             return
         }
 
-        var newCurrent = it.next()
-        if (current == newCurrent) { // hint: bidirect iterator specific of calls next + prev results in same element
-            if (!it.hasNext()) return
-            newCurrent = it.next()
-        }
-        if (!it.hasPrevious()) {
-            it.next()
-        }
-
+        items.next()
         cursor = cursor.withRelativeRow(1)
-        current = newCurrent
     }
 
     override fun prev() {
-        if (!it.hasPrevious()) {
+        if (!items.hasPrevious()) {
             return
         }
 
-        var newCurrent = it.previous()
-        if (current == newCurrent) {
-            if (!it.hasPrevious()) return
-            newCurrent = it.previous()
-        }
-        if (!it.hasNext()) {
-            it.previous()
-        }
+        items.previous()
         cursor = cursor.withRelativeRow(-1)
-        current = newCurrent
     }
 
     override fun processRename() {
-        if (current == null) return
+        if (items.current() == null) return
 
         var interrupted = false
 
-        var newName = StringBuilder(current!!.name())
+        var newName = StringBuilder(items.current()!!.name())
 
         while (!interrupted) {
             screen.pollInput()
                 ?.let { res ->
                     if (res.keyType == KeyType.Enter) {
                         println("here is Enter inside Pane")
-                        current!!.rename(newName.toString())
+                        items.current()!!.rename(newName.toString())
                         interrupted = true
                     } else if (res.keyType == KeyType.Escape) {
                         draw()
@@ -199,7 +166,7 @@ abstract class AbstractListNavigationPane<A : WithRename>(
 
 context(WithName<Project>)
 class ProjectPane(
-    private val projects: MutableList<Project>,
+    private val projects: VisibleElements<Project>,
     private val taskPane: TaskPane,
     private val screen: Screen,
     private var size: PaneSize,
@@ -211,7 +178,7 @@ class ProjectPane(
 
     companion object {
         fun init(
-            projects: MutableList<Project>,
+            projects: VisibleElements<Project>,
             taskPane: TaskPane,
             screen: Screen,
             size: PaneSize,
@@ -219,7 +186,7 @@ class ProjectPane(
         ): ProjectPane {
             with(projectWithNameInst) {
                 val pane = ProjectPane(projects, taskPane, screen, size, shift)
-                taskPane.items = projects.getOrNull(0)?.tasks() ?: mutableListOf()
+                taskPane.items = VisibleListElements(projects.current()?.tasks() ?: emptyList())
                 return pane
             }
         }
@@ -233,14 +200,14 @@ class ProjectPane(
 
     override fun next() {
         super.next()
-        taskPane.items = current?.tasks().orEmpty().toMutableList()
+        taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
 
         draw()
     }
 
     override fun prev() {
         super.prev()
-        taskPane.items = current?.tasks().orEmpty().toMutableList()
+        taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
 
         draw()
     }
@@ -252,7 +219,12 @@ class TaskPane(
     private val positionShift: PaneShift,
     private val contentPane: ContentPane<Task>,
     private val size: PaneSize
-) : AbstractListNavigationPane<Task>(mutableListOf(), screen, size, positionShift) {
+) : AbstractListNavigationPane<Task>(
+    VisibleListElements(emptyList()),
+    screen,
+    size,
+    positionShift
+) {
     companion object {
         fun init(
             screen: Screen,
@@ -280,7 +252,7 @@ class TaskPane(
             field = value
         }
 
-    override var items: MutableList<Task>
+    override var items: VisibleElements<Task>
         get() = super.items
         set(value) {
             super.items = value
@@ -293,7 +265,7 @@ class TaskPane(
         super.next()
 
         draw()
-        contentPane.source = current
+        contentPane.source = items.current()
         with(taskWithContent) {
             contentPane.draw()
         }
@@ -303,7 +275,7 @@ class TaskPane(
         super.prev()
 
         draw()
-        contentPane.source = current
+        contentPane.source = items.current()
         with(taskWithContent) {
             contentPane.draw()
         }
