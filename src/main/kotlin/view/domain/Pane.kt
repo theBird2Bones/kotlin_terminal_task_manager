@@ -1,5 +1,6 @@
 package tira.view.domain
 
+import com.googlecode.lanterna.SGR
 import com.googlecode.lanterna.TerminalPosition
 import com.googlecode.lanterna.TextCharacter
 import com.googlecode.lanterna.TextColor
@@ -92,19 +93,31 @@ abstract class AbstractListNavigationPane<A : WithRename>(
         }
     }
 
-    private fun printText(
+    fun printText(
         text: String,
         start: TerminalPosition,
         foreground: TextColor = TextColor.ANSI.DEFAULT,
-        background: TextColor = TextColor.ANSI.DEFAULT
+        background: TextColor = TextColor.ANSI.DEFAULT,
+        modifiers: List<SGR> = listOf()
     ) {
         val prepText = TextCharacter.fromString(text, foreground, background)
 
         for (idx in (0 until size.width())) {
             if (idx < size.width() - 1 && idx < prepText.size) {
-                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx])
+                screen.setCharacter(
+                    start.withRelativeColumn(idx),
+                    prepText[idx]
+                        .let {
+                            if (modifiers.isEmpty()) it
+                            else it.withModifiers(modifiers)
+                        }
+                )
             } else if (idx < prepText.size) {
-                screen.setCharacter(start.withRelativeColumn(idx), prepText[idx].withCharacter('~'))
+                screen.setCharacter(
+                    start.withRelativeColumn(idx),
+                    prepText[idx]
+                        .withCharacter('~')
+                )
             } else {
                 screen.setCharacter(start.withRelativeColumn(idx), TextCharacter.DEFAULT_CHARACTER)
             }
@@ -165,6 +178,8 @@ abstract class AbstractListNavigationPane<A : WithRename>(
     }
 
     abstract fun processElementCreation()
+
+    abstract fun complete()
 }
 
 context(WithName<Project>)
@@ -216,6 +231,10 @@ class ProjectPane(
     }
 
     override fun processElementCreation() {
+        TODO("Not yet implemented")
+    }
+
+    override fun complete() {
         TODO("Not yet implemented")
     }
 }
@@ -321,6 +340,26 @@ class TaskPane(
 
     fun setAccountableProject(project: Project) {
         this.project = project
+    }
+
+    override fun complete() {
+        items.current()?.toggleComplete()
+        val completion = items.current()?.props()?.find { it.name() == PropertyName.Completion.name }
+
+        if (completion?.value() == "true") {
+            printText(
+                items.current()?.name()!!,
+                cursor,
+                modifiers = listOf(SGR.CROSSED_OUT)
+            )
+        } else {
+            printText(
+                items.current()?.name()!!,
+                cursor,
+                modifiers = listOf(SGR.UNDERLINE)
+            )
+        }
+        screen.refresh()
     }
 }
 

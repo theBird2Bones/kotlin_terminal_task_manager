@@ -14,6 +14,9 @@ repositories {
 dependencies {
     testImplementation(kotlin("test"))
     implementation("com.googlecode.lanterna:lanterna:3.1.2")
+    implementation("org.commonmark:commonmark:0.24.0")
+    implementation("org.commonmark:commonmark-ext-yaml-front-matter:0.24.0")
+    implementation("commons-io:commons-io:2.16.0")
 }
 
 tasks.test {
