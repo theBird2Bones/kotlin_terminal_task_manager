@@ -74,7 +74,8 @@ class Property {
                 ---
             """.trimIndent()
 
-        val actualFileContent = FileReader(File(path.absolutePathString())).readLines().reduce { acc, x -> "${acc}\n${x}"
+        val actualFileContent = FileReader(File(path.absolutePathString())).readLines().reduce { acc, x ->
+            "${acc}\n${x}"
         }
 
         assert(expectedFileContent == actualFileContent) { "file content not the same" }
@@ -115,9 +116,48 @@ class Property {
                 ---
             """.trimIndent()
 
-        val actualFileContent = FileReader(File(path.absolutePathString())).readLines().reduce { acc, x -> "${acc}\n${x}"
+        val actualFileContent = FileReader(File(path.absolutePathString())).readLines().reduce { acc, x ->
+            "${acc}\n${x}"
         }
 
         assert(expectedFileContent == actualFileContent) { "file content not the same" }
+
+    }
+
+    @Test
+    fun `rewrite props with different value`() {
+        val path = Path.of(tmpDir.absolutePathString(), "tmpFile.md")
+        path.deleteIfExists()
+        path.createFile()
+        val source = PathSource.from(path)
+        val fw = FileWriter(source.absolutePath())
+        fw.write(
+            """
+                ---
+                draft: false
+                ---
+                """.trimIndent()
+        )
+        fw.flush()
+
+        val fp = FileProperty(ValidatedFile.from(source))
+
+        var props = fp
+            .props()
+            .map { Pair(it.name(), it.value()) }
+            .toMap()
+
+        assert(props.containsKey("draft")) { "No draft" }
+        assert(props.get("draft") == "false") { "draft contains not `false`" }
+
+        fp.addProperty(RawProperty("draft", "true"))
+
+        props = fp
+            .props()
+            .map { Pair(it.name(), it.value()) }
+            .toMap()
+
+        assert(props.containsKey("draft")) { "No draft" }
+        assert(props.get("draft") == "true") { "draft contains not `false`" }
     }
 }

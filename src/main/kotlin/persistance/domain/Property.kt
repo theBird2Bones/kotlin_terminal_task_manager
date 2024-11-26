@@ -49,15 +49,37 @@ class FileProperty(
     }
 
     fun addProperty(property: Property) {
-        //todo: skip if presented already
-        if (rawProps.isEmpty()) {
-            rawProps.add(ValueToken(property.name(), property.value(), 1))
+        if (!hasSameProperty(property)) {
+            if (rawProps.isEmpty()) {
+                rawProps.add(ValueToken(property.name(), property.value(), 1))
+            } else {
+                rawProps.add(ValueToken(property.name(), property.value(), rawProps.last().linePos() + 1))
+            }
         } else {
-            rawProps.add(ValueToken(property.name(), property.value(), rawProps.last().linePos() + 1))
+            replaceValueWith(property)
         }
         val fr = FileWriter(file.underlying.absolutePath())
         fr.write(renderProps())
         fr.flush()
+        fr.close()
+    }
+
+    private fun hasSameProperty(newProperty: Property): Boolean {
+        for (token in rawProps.withIndex()) {
+            if (token.value.name() == newProperty.name()) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun replaceValueWith(newProperty: Property) {
+        for (token in rawProps.withIndex()) {
+            if (token.value.name() == newProperty.name()) {
+                rawProps[token.index] = ValueToken(newProperty.name(), newProperty.value(), token.index + 1)
+                break
+            }
+        }
     }
 
     private fun renderProps(): String {
@@ -102,10 +124,13 @@ class Parser() {
 
 interface Token {
     fun repr(): String
+    fun name(): String
     fun linePos(): Int
 }
 
 class ValueToken(val name: String, val value: String, private val linePos: Int) : Token {
     override fun repr(): String = "${name}: ${value}"
+    override fun name(): String = name
+
     override fun linePos(): Int = linePos
 }
