@@ -76,6 +76,10 @@ class Screen(
                     activePane.get(currentViewMode)?.processElementCreation()
                 } else continue
 
+                ' ' -> if(input.isCtrlDown) {
+                    activePane.get(currentViewMode)?.complete()
+                }
+
                 'h' -> currentViewMode = ViewMode.Projects
                 'l' -> {
                     taskPane.setAccountableProject(

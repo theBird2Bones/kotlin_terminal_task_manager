@@ -1,7 +1,6 @@
 package tira.persistance.domain
 
 import tira.persistance.domain.newtypes.ValidatedFile
-import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.FileWriter
@@ -26,7 +25,7 @@ class RawProperty(
 }
 
 enum class PropertyName(name: String) {
-    Completed("completed")
+    Completion("completed")
 }
 
 /**
