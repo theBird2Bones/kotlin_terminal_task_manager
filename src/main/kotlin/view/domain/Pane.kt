@@ -56,12 +56,15 @@ interface NavigationPane {
 }
 
 context(WithName<A>)
-abstract class AbstractListNavigationPane<A : WithRename>(
+abstract class AbstractListNavigationPane<A>(
     open var items: VisibleElements<A>,
     private val screen: Screen,
     private val size: PaneSize,
-    private val shift: PaneShift
-) : NavigationPane, WithRenameProcessing {
+    private val shift: PaneShift,
+    private val propsStyle: Map<Class<out Property>, (Property) -> SGR?>
+) : NavigationPane, WithRenameProcessing
+        where A : WithProperties,
+              A : WithRename {
     protected abstract var cursor: TerminalPosition
 
 //    private var startOffset: Int = 0 //todo: is neccessary for screen scrolling?
@@ -78,19 +81,39 @@ abstract class AbstractListNavigationPane<A : WithRename>(
 
         for (rowIdx in 0 until size.height()) {
             if (rowIdx < elements.size) {
-                if (elements[rowIdx] == items.current()) {
+
+                val current = elements[rowIdx]
+                if (current == items.current()) {
+                    printText(
+                        current.name(),
+                        drawCursor.withRelativeRow(rowIdx),
+                        background = TextColor.Factory.fromString("#add8e6"), //todo: add to config
+                        modifiers = gatherStyle(current.props())
+                    )
+                } else {
                     printText(
                         elements[rowIdx].name(),
                         drawCursor.withRelativeRow(rowIdx),
-                        background = TextColor.Factory.fromString("#add8e6") //todo: add to config
+                        modifiers = gatherStyle(current.props())
                     )
-                } else {
-                    printText(elements[rowIdx].name(), drawCursor.withRelativeRow(rowIdx))
                 }
             } else {
                 printText("", drawCursor.withRelativeRow(rowIdx))
             }
         }
+    }
+
+    private fun gatherStyle(props: List<Property>): List<SGR> {
+        val res = mutableListOf<SGR>()
+        for (prop in props) {
+            propsStyle
+                .get(prop.javaClass)
+                ?.let {
+                    it(prop)
+                        ?.let { res.add(it) }
+                }
+        }
+        return res
     }
 
     fun printText(
@@ -188,8 +211,9 @@ class ProjectPane(
     private val taskPane: TaskPane,
     private val screen: Screen,
     private var size: PaneSize,
-    private var shift: PaneShift
-) : AbstractListNavigationPane<Project>(projects, screen, size, shift) {
+    private var shift: PaneShift,
+    private val propsStyle: Map<Class<out Property>, (Property) -> SGR>
+) : AbstractListNavigationPane<Project>(projects, screen, size, shift, propsStyle) {
 
     override var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
         get() = field
@@ -203,7 +227,7 @@ class ProjectPane(
             shift: PaneShift
         ): ProjectPane {
             with(projectWithNameInst) {
-                val pane = ProjectPane(projects, taskPane, screen, size, shift)
+                val pane = ProjectPane(projects, taskPane, screen, size, shift, mapOf())
                 taskPane.items = VisibleListElements(projects.current()?.tasks() ?: emptyList())
                 return pane
             }
@@ -244,12 +268,14 @@ class TaskPane(
     private val screen: Screen,
     private val positionShift: PaneShift,
     private val contentPane: ContentPane<Task>,
-    private val size: PaneSize
+    private val size: PaneSize,
+    private val propsStyle: Map<Class<out Property>, (Property) -> SGR?>
 ) : AbstractListNavigationPane<Task>(
     VisibleListElements(emptyList()),
     screen,
     size,
-    positionShift
+    positionShift,
+    propsStyle
 ) {
     companion object {
         fun init(
@@ -258,17 +284,22 @@ class TaskPane(
             size: PaneSize,
             shift: PaneShift
         ): TaskPane {
+            val propsStyle = mapOf(
+                Pair<Class<out Property>, (Property) -> SGR?>(
+                    CompletedProperty::class.java,
+                    { if (it.value() == "true") SGR.CROSSED_OUT else null }
+                )
+            )
             with(taskWithNameInst) {
                 val pane = TaskPane(
                     screen,
                     shift,
                     contentPane,
-                    size
+                    size,
+                    propsStyle
                 )
                 return pane
-
             }
-
         }
     }
 
@@ -344,21 +375,7 @@ class TaskPane(
 
     override fun complete() {
         items.current()?.toggleComplete()
-        val completion = items.current()?.props()?.find { it.name() == PropertyName.Completion.name }
-
-        if (completion?.value() == "true") {
-            printText(
-                items.current()?.name()!!,
-                cursor,
-                modifiers = listOf(SGR.CROSSED_OUT)
-            )
-        } else {
-            printText(
-                items.current()?.name()!!,
-                cursor,
-                modifiers = listOf(SGR.UNDERLINE)
-            )
-        }
+        draw()
         screen.refresh()
     }
 }

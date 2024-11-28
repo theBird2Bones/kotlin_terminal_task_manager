@@ -1,16 +1,19 @@
 package tira.persistance.domain
 
 import tira.persistance.domain.newtypes.*
+import tira.predef.props.WithProperties
 import tira.predef.props.WithRename
 import java.nio.file.Files
 import java.nio.file.Path
 
-interface Project: WithRename {
+interface Project : WithRename, WithProperties {
     fun name(): String
     fun tasks(): MutableList<Task> //add task handler to add another tasks via that class
     override fun rename(newName: String): Unit
     fun createTask(name: String): Unit
     fun delete(task: Task): Unit
+
+    override fun props(): List<Property> = listOf() //todo
 }
 
 //todo: caching Decorator

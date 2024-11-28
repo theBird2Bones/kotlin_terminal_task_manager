@@ -7,14 +7,15 @@ import org.commonmark.renderer.Renderer
 import org.commonmark.renderer.text.TextContentRenderer
 import tira.persistance.domain.newtypes.ValidatedDirectory
 import tira.persistance.domain.newtypes.ValidatedFile
+import tira.predef.props.WithProperties
 import tira.predef.props.WithRename
 import java.nio.file.Files
 import kotlin.io.path.Path
 import kotlin.io.path.createFile
 
-interface Task : WithRename {
+interface Task : WithRename, WithProperties {
     //todo: add content fetching
-    fun props(): List<Property>
+    override fun props(): List<Property>
     fun name(): String
     override fun rename(newName: String): Unit
     fun delete(): Unit //smt like destroy
@@ -57,7 +58,7 @@ class FileTask private constructor(
                 else "false"
             } ?: "true"
 
-        _props.addProperty(RawProperty(PropertyName.Completion.name, nextValue))
+        _props.addProperty(CompletedProperty(nextValue))
 
 
     }

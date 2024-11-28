@@ -24,6 +24,14 @@ class RawProperty(
     override fun value(): String = value
 }
 
+class CompletedProperty(
+    val value: String
+) : Property {
+    override fun name(): String = PropertyName.Completion.name
+
+    override fun value(): String = value
+}
+
 enum class PropertyName(name: String) {
     Completion("completed")
 }
@@ -41,7 +49,7 @@ class FileProperty(
 
         for (raw in rawProps) {
             if (raw is ValueToken) {
-                res.add(RawProperty(raw.name, raw.value))
+                res.add(PropertyFactory.makeProp(raw.name, raw.value))
             }
         }
         return res
@@ -89,6 +97,15 @@ class FileProperty(
         }
         sb.append("---\n")
         return sb.toString()
+    }
+}
+
+object PropertyFactory {
+    fun makeProp(name: String, value: String): Property {
+        return when (name) {
+            PropertyName.Completion.name -> CompletedProperty(value)
+            else -> RawProperty(name, value)
+        }
     }
 }
 
