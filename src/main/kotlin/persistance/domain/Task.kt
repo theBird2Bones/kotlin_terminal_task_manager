@@ -1,10 +1,5 @@
 package tira.persistance.domain
 
-import org.commonmark.ext.front.matter.YamlFrontMatterExtension
-import org.commonmark.ext.front.matter.YamlFrontMatterVisitor
-import org.commonmark.parser.Parser
-import org.commonmark.renderer.Renderer
-import org.commonmark.renderer.text.TextContentRenderer
 import tira.persistance.domain.newtypes.ValidatedDirectory
 import tira.persistance.domain.newtypes.ValidatedFile
 import tira.predef.props.WithProperties
@@ -26,11 +21,8 @@ interface Task : WithRename, WithProperties {
 
 class FileTask private constructor(
     private val source: ValidatedFile,
-    private val parser: Parser,
-    private val renderer: Renderer
 ) : Task { // very scala like. todo: #todo1
     private val _name = FileName(source)
-    private val visitor = YamlFrontMatterVisitor()
     private val _props = FileProperty(source)
 
     //todo: add class to invalidate changes for names and cache last result
@@ -70,20 +62,6 @@ class FileTask private constructor(
     override fun props(): List<Property> = _props.props()
 
     companion object {
-        val parser = Parser.builder()
-            .extensions(
-                listOf(
-                    YamlFrontMatterExtension.create()
-                )
-            )
-            .build()
-        val renderer = TextContentRenderer.builder()
-            .extensions(
-                listOf(
-                    YamlFrontMatterExtension.create()
-                )
-            )
-            .build()
 
         //only for existing files
         fun from(file: Source): Task {
@@ -91,7 +69,7 @@ class FileTask private constructor(
 
             println("make task for ${file.absolutePath()}")
 
-            return FileTask(validatedFile, parser, renderer)
+            return FileTask(validatedFile)
         }
 
         fun create(name: String, projSource: ValidatedDirectory): Task {
@@ -104,9 +82,7 @@ class FileTask private constructor(
                         ValidatedFile.from(PathSource(file)),
                         projSource
                     )
-                ),
-                parser,
-                renderer
+                )
             )
         }
     }
