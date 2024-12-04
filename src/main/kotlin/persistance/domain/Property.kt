@@ -40,7 +40,7 @@ enum class PropertyName(name: String) {
  * MD's yaml front matter reader with tags replacement
  */
 class FileProperty(
-    private val file: ValidatedFile
+    val file: ValidatedFile
 ) {
     private val rawProps = Parser().parse(FileInputStream(file.underlying.absolutePath())).toMutableList()
 

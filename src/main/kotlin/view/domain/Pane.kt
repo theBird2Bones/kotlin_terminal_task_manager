@@ -214,13 +214,19 @@ class ProjectPane(
     private val screen: Screen,
     private var size: PaneSize,
     private var shift: PaneShift,
-    private val propsStyle: Map<Class<out Property>, (Property) -> SGR>
+    private val propsStyle: Map<Class<out Property>, (Property) -> SGR?>
 ) : AbstractListNavigationPane<Project>(projects, screen, size, shift, propsStyle) {
 
     override var cursor: TerminalPosition = TerminalPosition.TOP_LEFT_CORNER
         get() = field
 
     companion object {
+        val propsStyle = mapOf(
+            Pair<Class<out Property>, (Property) -> SGR?>(
+                CompletedProperty::class.java,
+                { if (it.value() == "true") SGR.CROSSED_OUT else null }
+            )
+        )
         fun init(
             projects: VisibleElements<Project>,
             taskPane: TaskPane,
@@ -229,7 +235,7 @@ class ProjectPane(
             shift: PaneShift
         ): ProjectPane {
             with(projectWithNameInst) {
-                val pane = ProjectPane(projects, taskPane, screen, size, shift, mapOf())
+                val pane = ProjectPane(projects, taskPane, screen, size, shift, propsStyle)
                 taskPane.items = VisibleListElements(projects.current()?.tasks() ?: emptyList())
                 return pane
             }
@@ -264,8 +270,11 @@ class ProjectPane(
         TODO("Not yet implemented")
     }
 
+    //todo: вытащить в а класс
     override fun complete() {
-        TODO("Not yet implemented")
+        items.current()?.toggleComplete()
+        draw()
+        screen.refresh()
     }
 }
 
