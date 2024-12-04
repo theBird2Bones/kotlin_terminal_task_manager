@@ -5,6 +5,8 @@ import tira.predef.props.WithProperties
 import tira.predef.props.WithRename
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.name
 
 interface Project : WithRename, WithProperties {
     fun name(): String
@@ -13,7 +15,9 @@ interface Project : WithRename, WithProperties {
     fun createTask(name: String): Unit
     fun delete(task: Task): Unit
 
-    override fun props(): List<Property> = listOf() //todo
+    override fun props(): List<Property>
+
+    fun toggleComplete()
 }
 
 //todo: caching Decorator
@@ -21,11 +25,21 @@ class Dir private constructor(
     private val source: ValidatedDirectory
 ) : Project {
     private val _name = DirectoryName(source)
+    private val _props = FileProperty(
+        ValidatedFile.from(
+            PathSource(
+                propFilePath(
+                    Path.of(source.underlying.absolutePath())
+                )
+            )
+        )
+    )
     private val _tasks: MutableList<Task> = Files.list(
         Path.of(
             source.underlying.absolutePath()
         )
     )
+        .filter { !it.name.startsWith(".") }
         .toList()
         .map { p ->
             val file = ValidatedFile.from(PathSource.from(p))
@@ -42,7 +56,10 @@ class Dir private constructor(
 
     override fun name(): String = _name.name()
 
-    override fun rename(newName: String) = _name.rename(newName)
+    override fun rename(newName: String) {
+        _props.file.underlying.rename(".${newName}")
+        _name.rename(newName)
+    }
 
     override fun createTask(name: String) {
         val task = FileTask.create(name, source)
@@ -58,13 +75,51 @@ class Dir private constructor(
 
     }
 
+    override fun props(): List<Property> {
+        return _props.props()
+    }
+
+    override fun toggleComplete() {
+        val nextValue = _props.props()
+            .find { it.name() == PropertyName.Completion.name }
+            ?.value()
+            ?.let {
+                if (it == "false") "true"
+                else "false"
+            } ?: "true"
+
+        _props.addProperty(CompletedProperty(nextValue))
+    }
+
     companion object {
         fun from(dir: Source): Project {
             val directory = ValidatedDirectory.from(dir)
 
             println("make project for ${dir.absolutePath()}")
 
+            Path.of(dir.absolutePath())
+                .let { dirPath ->
+                    if (!hasPropFile(dirPath)) {
+                        makePropFile(dirPath)
+                    }
+                }
+
             return Dir(directory)
         }
+
+        private fun hasPropFile(projectPath: Path): Boolean {
+            return Files.exists(
+                propFilePath(projectPath)
+            )
+        }
+
+        private fun makePropFile(projectPath: Path) {
+            Files.createFile(
+                propFilePath(projectPath)
+            )
+        }
+
+        private fun propFilePath(projectPath: Path): Path =
+            Path.of(projectPath.absolutePathString(), ".${projectPath.name}")
     }
 }
