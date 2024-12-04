@@ -227,6 +227,7 @@ class ProjectPane(
                 { if (it.value() == "true") SGR.CROSSED_OUT else null }
             )
         )
+
         fun init(
             projects: VisibleElements<Project>,
             taskPane: TaskPane,
@@ -354,6 +355,8 @@ class TaskPane(
     }
 
     override fun processDelete() {
+        items.current()?.let { project?.delete(it) }
+
         items.remove()
 
         draw()
