@@ -200,6 +200,8 @@ abstract class AbstractListNavigationPane<A>(
         return RenameProcessing.Succeed
     }
 
+    abstract fun processDelete()
+
     abstract fun processElementCreation()
 
     abstract fun complete()
@@ -252,6 +254,10 @@ class ProjectPane(
         taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
 
         draw()
+    }
+
+    override fun processDelete() {
+        TODO("Not yet implemented")
     }
 
     override fun processElementCreation() {
@@ -336,6 +342,17 @@ class TaskPane(
         with(taskWithContent) {
             contentPane.draw()
         }
+    }
+
+    override fun processDelete() {
+        items.remove()
+
+        draw()
+        contentPane.source = items.current()
+        with(taskWithContent) {
+            contentPane.draw()
+        }
+        screen.refresh()
     }
 
     override fun processElementCreation() {

@@ -70,16 +70,6 @@ class Screen(
                     }
                     ?: println("nothing to show")
 
-                'r' -> activePane.get(currentViewMode)?.processRename()
-
-                'N' -> if (input.isCtrlDown) {
-                    activePane.get(currentViewMode)?.processElementCreation()
-                } else continue
-
-                ' ' -> if(input.isCtrlDown) {
-                    activePane.get(currentViewMode)?.complete()
-                }
-
                 'h' -> currentViewMode = ViewMode.Projects
                 'l' -> {
                     taskPane.setAccountableProject(
@@ -87,6 +77,21 @@ class Screen(
                     )
                     currentViewMode = ViewMode.Tasks
                 }
+
+                'r' -> activePane.get(currentViewMode)?.processRename()
+
+                'N' -> if (input.isCtrlDown) {
+                    activePane.get(currentViewMode)?.processElementCreation()
+                } else continue
+
+                'd' -> if (input.isCtrlDown) {
+                    activePane.get(currentViewMode)?.processDelete()
+                } else continue
+
+                ' ' -> if(input.isCtrlDown) {
+                    activePane.get(currentViewMode)?.complete()
+                }
+
             }
 
             //todo: redraw if size changed
