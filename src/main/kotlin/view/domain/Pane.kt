@@ -74,7 +74,7 @@ abstract class AbstractListNavigationPane<A>(
 
     open fun draw() {
         if (items.isEmpty()) {
-            printText("There is empty", cursor)
+            printText("<empty>", cursor)
             for (rowIdx in (cursor.row + 1 until size.height())) {
                 printText("", cursor.withRow(rowIdx))
             }
