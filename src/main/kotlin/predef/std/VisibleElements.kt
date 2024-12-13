@@ -64,6 +64,7 @@ class VisibleListElements<A>(elements: List<A>) : VisibleElements<A> {
     override fun insert(element: A) {
         if(_elements.isEmpty()) {
             _elements.add(idx, element)
+            return
         }
         _elements.add(idx + 1, element)
     }
