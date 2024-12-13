@@ -7,10 +7,13 @@ import com.googlecode.lanterna.TextColor
 import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.screen.Screen
 import tira.persistance.domain.*
+import tira.persistance.domain.newtypes.ValidatedDirectory
 
 import tira.predef.props.*
 import tira.predef.std.VisibleElements
 import tira.predef.std.VisibleListElements
+import java.nio.file.Path
+import kotlin.io.path.absolutePathString
 
 interface PaneSize {
     fun width(): Int
@@ -209,6 +212,7 @@ abstract class AbstractListNavigationPane<A>(
 
 context(WithName<Project>)
 class ProjectPane(
+    private val root: Path,
     private val projects: VisibleElements<Project>,
     private val taskPane: TaskPane,
     private val screen: Screen,
@@ -229,6 +233,7 @@ class ProjectPane(
         )
 
         fun init(
+            root: Path,
             projects: VisibleElements<Project>,
             taskPane: TaskPane,
             screen: Screen,
@@ -236,7 +241,7 @@ class ProjectPane(
             shift: PaneShift
         ): ProjectPane {
             with(projectWithNameInst) {
-                val pane = ProjectPane(projects, taskPane, screen, size, shift, propsStyle)
+                val pane = ProjectPane(root, projects, taskPane, screen, size, shift, propsStyle)
                 taskPane.items = VisibleListElements(projects.current()?.tasks() ?: emptyList())
                 return pane
             }
@@ -268,10 +273,40 @@ class ProjectPane(
     }
 
     override fun processElementCreation() {
-        TODO("Not yet implemented")
+        val tmp = InMemoryProject("")
+
+        items.insert(tmp)
+        next()
+        screen.refresh()
+        when (processRename()) {
+            RenameProcessing.Aborted -> {
+                items.remove()
+                cursor = cursor.withRelativeRow(-1)
+            }
+
+            RenameProcessing.Succeed -> {
+                items.current()?.name()?.let { name ->
+                    items.remove()
+                    if (name == "") {
+                        cursor = cursor.withRelativeRow(-1)
+                    } else {
+                        val projectPath = Path.of(root.absolutePathString(), name)
+                        items.insert(
+                            Dir.from(
+                                ValidatedDirectory.create(projectPath).underlying
+                            )
+                        )
+                    }
+                }
+            }
+
+            null -> return
+        }
+
+        draw()
+        screen.refresh()
     }
 
-    //todo: вытащить в а класс
     override fun complete() {
         items.current()?.toggleComplete()
         draw()
