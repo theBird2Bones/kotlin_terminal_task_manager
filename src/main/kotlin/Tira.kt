@@ -7,9 +7,11 @@ import java.nio.file.Path
 import java.util.UUID
 import kotlin.io.path.exists
 
-class Tira private constructor(val projects: List<Project>) {
+class Tira private constructor(
+    private val root: Path,
+    val projects: List<Project>) {
     fun run() {
-        val screen = Screen(projects)
+        val screen = Screen(root, projects)
         screen.start()
 
 //        val project = projects[0]
@@ -42,6 +44,7 @@ class Tira private constructor(val projects: List<Project>) {
                 println("created dir")
             }
             return Tira(
+                root,
                 Files
                     .list(root)
                     .map { Dir.from(PathSource.from(it)) }

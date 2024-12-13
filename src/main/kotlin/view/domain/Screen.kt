@@ -6,8 +6,10 @@ import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import tira.persistance.domain.Project
 import tira.persistance.domain.Task
 import tira.predef.std.VisibleListElements
+import java.nio.file.Path
 
 class Screen(
+    root: Path,
     projects: List<Project>
 ) {
     private val tf = DefaultTerminalFactory()
@@ -24,6 +26,7 @@ class Screen(
     )
 
     private val projectPane = ProjectPane.init(
+        root,
         VisibleListElements(projects),
         taskPane,
         screen,

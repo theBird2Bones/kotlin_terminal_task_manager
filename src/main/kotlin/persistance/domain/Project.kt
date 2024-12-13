@@ -84,7 +84,7 @@ class Dir private constructor(
             .find { it.name() == PropertyName.Completion.name }
             ?.value()
             ?.let {
-                if (it == "false") "true"
+                if (it == "false") "true" //todo: Replace with enum
                 else "false"
             } ?: "true"
 
@@ -93,6 +93,21 @@ class Dir private constructor(
 
     companion object {
         fun from(dir: Source): Project {
+            val directory = ValidatedDirectory.from(dir)
+
+            println("make project for ${dir.absolutePath()}")
+
+            Path.of(dir.absolutePath())
+                .let { dirPath ->
+                    if (!hasPropFile(dirPath)) {
+                        makePropFile(dirPath)
+                    }
+                }
+
+            return Dir(directory)
+        }
+
+        fun create(dir: Source): Project {
             val directory = ValidatedDirectory.from(dir)
 
             println("make project for ${dir.absolutePath()}")
@@ -122,4 +137,31 @@ class Dir private constructor(
         private fun propFilePath(projectPath: Path): Path =
             Path.of(projectPath.absolutePathString(), ".${projectPath.name}")
     }
+}
+
+class InMemoryProject(
+    private var name: String
+) : Project {
+    override fun name(): String = name
+
+    override fun tasks(): MutableList<Task> = mutableListOf()
+
+    override fun rename(newName: String) {
+        name = newName
+    }
+
+    override fun createTask(name: String) {
+        TODO("Not yet implemented")
+    }
+
+    override fun delete(task: Task) {
+        TODO("Not yet implemented")
+    }
+
+    override fun props(): List<Property> = listOf()
+
+    override fun toggleComplete() {
+        TODO("Not yet implemented")
+    }
+
 }
