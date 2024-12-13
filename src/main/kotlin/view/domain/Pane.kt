@@ -403,9 +403,15 @@ class TaskPane(
     }
 
     override fun processDelete() {
-        items.current()?.let { project?.delete(it) }
+        val current = items.current()
 
-        items.remove()
+        try {
+            items.remove()
+            project?.delete(current!!)
+        } catch (e: IllegalStateException) {
+            println("Items is empty, can't update VisibleElements")
+            return
+        }
 
         draw()
         contentPane.source = items.current()
