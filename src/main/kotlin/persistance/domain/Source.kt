@@ -43,7 +43,7 @@ class DependentSource private constructor(
 
     override fun absolutePath() = unsafePath().toString()
 
-    private fun unsafePath() = Path(source.absolutePath(), path.toString())
+    private fun unsafePath() = Path(source.absolutePath(), path.toString()).normalize()
 
     companion object {
         fun from(file: ValidatedFile, directory: ValidatedDirectory): Source {

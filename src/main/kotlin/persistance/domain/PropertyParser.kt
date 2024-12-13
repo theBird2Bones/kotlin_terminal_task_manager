@@ -5,15 +5,16 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.Reader
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.*
 
 class Parser() {
     private val items = LinkedList<Token>()
-    fun parse(input: InputStream): List<Token> {
-        val br = BufferedReader(InputStreamReader(input, StandardCharsets.UTF_8))
+    fun parse(input: Path): List<Token> {
         var isBlockOpened = false
 
-        for (line in br.readLines().withIndex()) {
+        for (line in Files.readAllLines(input).withIndex()) {
             if (line.value.isEmpty() && line.value != "---") throw IllegalStateException("Must start with ---")
             if (line.value == "---" && items.isEmpty()) {
                 isBlockOpened = true
