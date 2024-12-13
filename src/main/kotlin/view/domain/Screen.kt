@@ -2,6 +2,7 @@ package tira.view.domain
 
 import com.googlecode.lanterna.screen.Screen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
+import com.googlecode.lanterna.terminal.swing.AWTTerminalFontConfiguration
 
 import tira.persistance.domain.Project
 import tira.persistance.domain.Task
@@ -19,10 +20,14 @@ class Screen(
 
     //todo: replace Task on smt with specific property
     //todo: replace nailed TP with virtual space and dynamic sizing
-    private val contentPane = ContentPane<Task>(screen, DynamicPaneSize(60, screen), DynamicPaneShift(40, screen))
+    private val contentPane = ContentPane<Task>(
+        screen,
+        DynamicPaneSize(38, screen),
+        DynamicPaneShift(62, screen)
+    )
     private val taskPane = TaskPane.init(
-        screen, contentPane, DynamicPaneSize(20, screen),
-        DynamicPaneShift(20, screen)
+        screen, contentPane, DynamicPaneSize(30, screen),
+        DynamicPaneShift(31, screen)
     )
 
     private val projectPane = ProjectPane.init(
@@ -30,7 +35,7 @@ class Screen(
         VisibleListElements(projects),
         taskPane,
         screen,
-        DynamicPaneSize(20, screen),
+        DynamicPaneSize(30, screen),
         DynamicPaneShift(0, screen)
     )
 
@@ -91,7 +96,7 @@ class Screen(
                     activePane.get(currentViewMode)?.processDelete()
                 } else continue
 
-                ' ' -> if(input.isCtrlDown) {
+                ' ' -> if (input.isCtrlDown) {
                     activePane.get(currentViewMode)?.complete()
                 }
 
