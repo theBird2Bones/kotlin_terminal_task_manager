@@ -14,6 +14,7 @@ interface Project : WithRename, WithProperties {
     override fun rename(newName: String): Unit
     fun createTask(name: String): Unit
     fun delete(task: Task): Unit
+    fun destruct(): Unit
 
     override fun props(): List<Property>
 
@@ -73,6 +74,12 @@ class Dir private constructor(
         task.delete()
         println("tasks after ${tasks()}")
 
+    }
+
+    override fun destruct() {
+        _tasks.forEach { it.delete() }
+        Files.delete(Path.of(_props.file.underlying.absolutePath()))
+        Files.delete(Path.of(source.underlying.absolutePath()))
     }
 
     override fun props(): List<Property> {
@@ -155,6 +162,10 @@ class InMemoryProject(
     }
 
     override fun delete(task: Task) {
+        TODO("Not yet implemented")
+    }
+
+    override fun destruct() {
         TODO("Not yet implemented")
     }
 
