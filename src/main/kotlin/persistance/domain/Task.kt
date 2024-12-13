@@ -5,8 +5,10 @@ import tira.persistance.domain.newtypes.ValidatedFile
 import tira.predef.props.WithProperties
 import tira.predef.props.WithRename
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.createFile
+import kotlin.io.path.exists
 
 interface Task : WithRename, WithProperties {
     //todo: add content fetching

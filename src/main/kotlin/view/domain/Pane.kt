@@ -269,7 +269,16 @@ class ProjectPane(
     }
 
     override fun processDelete() {
-        TODO("Not yet implemented")
+        items.current()?.run {
+            destruct()
+            items.remove()
+            if(cursor.row > 0){
+                cursor.withRelativeRow(-1)
+            }
+            taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
+            draw()
+            screen.refresh()
+        }
     }
 
     override fun processElementCreation() {
