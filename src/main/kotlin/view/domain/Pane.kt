@@ -387,7 +387,7 @@ class TaskPane(
 
         draw()
         contentPane.source = items.current()
-        with(taskWithContent) {
+        with(taskWithContentSkipProps) {
             contentPane.draw()
         }
     }
@@ -397,7 +397,7 @@ class TaskPane(
 
         draw()
         contentPane.source = items.current()
-        with(taskWithContent) {
+        with(taskWithContentSkipProps) {
             contentPane.draw()
         }
     }
@@ -415,7 +415,7 @@ class TaskPane(
 
         draw()
         contentPane.source = items.current()
-        with(taskWithContent) {
+        with(taskWithContentSkipProps) {
             contentPane.draw()
         }
         screen.refresh()
