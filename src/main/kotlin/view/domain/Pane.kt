@@ -160,8 +160,8 @@ abstract class AbstractListNavigationPane<A>(
     }
 
     protected fun removeCurrent() {
-        if(items.isEmpty()) return
-        if(items.hasPrevious()) {
+        if (items.isEmpty()) return
+        if (items.hasPrevious()) {
             cursor = cursor.withRelativeRow(-1)
         }
         items.remove()
@@ -293,17 +293,12 @@ class ProjectPane(
         next()
         screen.refresh()
         when (processRename()) {
-            RenameProcessing.Aborted -> {
-                items.remove()
-                cursor = cursor.withRelativeRow(-1)
-            }
+            RenameProcessing.Aborted -> removeCurrent()
 
             RenameProcessing.Succeed -> {
                 items.current()?.name()?.let { name ->
                     removeCurrent()
-                    if (name == "") {
-                        cursor = cursor.withRelativeRow(-1)
-                    } else {
+                    if (name != "") {
                         val projectPath = Path.of(root.absolutePathString(), name)
                         items.insert(
                             Dir.from(
@@ -424,22 +419,21 @@ class TaskPane(
         next()
         screen.refresh()
         when (processRename()) {
-            RenameProcessing.Aborted -> {
-                items.remove()
-                cursor = cursor.withRelativeRow(-1)
-            }
+            RenameProcessing.Aborted -> removeCurrent()
 
             RenameProcessing.Succeed -> {
                 items.current()?.name()?.let { name ->
-                    if (name == "") {
-                        items.remove()
-                        cursor = cursor.withRelativeRow(-1)
+                    removeCurrent()
+                    if (name != "") {
+                        project?.createTask(name)?.let {
+                            items.insert(it)
+                            next()
+                        }
                     }
-                    project?.createTask(name)
                 }
             }
 
-            null -> return // мб nothing todo. Какая мета в котлине на Option[Smt] когда не обработали что-то из-за гарды?
+            null -> return
         }
 
         draw()

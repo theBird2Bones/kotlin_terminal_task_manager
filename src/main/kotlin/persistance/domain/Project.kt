@@ -12,7 +12,7 @@ interface Project : WithRename, WithProperties {
     fun name(): String
     fun tasks(): MutableList<Task> //add task handler to add another tasks via that class
     override fun rename(newName: String): Unit
-    fun createTask(name: String): Unit
+    fun createTask(name: String): Task
     fun delete(task: Task): Unit
     fun destruct(): Unit
 
@@ -62,9 +62,10 @@ class Dir private constructor(
         _name.rename(newName)
     }
 
-    override fun createTask(name: String) {
+    override fun createTask(name: String): Task {
         val task = FileTask.create(name, source)
         _tasks.add(task)
+        return task
     }
 
     override fun delete(task: Task) {
@@ -157,7 +158,7 @@ class InMemoryProject(
         name = newName
     }
 
-    override fun createTask(name: String) {
+    override fun createTask(name: String): Task {
         TODO("Not yet implemented")
     }
 
