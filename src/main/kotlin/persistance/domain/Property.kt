@@ -1,6 +1,7 @@
 package tira.persistance.domain
 
 import tira.persistance.domain.newtypes.ValidatedFile
+import tira.predef.props.sourceWithContentSkipProps
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.FileWriter
@@ -8,6 +9,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.Reader
 import java.nio.charset.StandardCharsets
+import java.nio.file.Path
 import java.util.*
 
 interface Property {
@@ -42,7 +44,13 @@ enum class PropertyName(name: String) {
 class FileProperty(
     val file: ValidatedFile
 ) {
-    private val rawProps = Parser().parse(FileInputStream(file.underlying.absolutePath())).toMutableList()
+    private val rawProps = Parser()
+        .parse(
+            Path.of(
+                file.underlying.absolutePath()
+            )
+        )
+        .toMutableList()
 
     fun props(): List<Property> {
         val res = mutableListOf<Property>()
@@ -65,10 +73,28 @@ class FileProperty(
         } else {
             replaceValueWith(property)
         }
+        val content = renderContent()
+
         val fr = FileWriter(file.underlying.absolutePath())
-        fr.write(renderProps())
+        fr.write(content)
         fr.flush()
         fr.close()
+    }
+
+    private fun renderContent(): String {
+        val sb = StringBuilder()
+        val props = renderProps()
+        sb.append(props)
+
+        val content = with(sourceWithContentSkipProps) {
+            file.underlying.content()
+        }
+        content.forEach {
+            sb.append(it)
+            sb.append("\n")
+        }
+
+        return sb.toString()
     }
 
     private fun hasSameProperty(newProperty: Property): Boolean {
