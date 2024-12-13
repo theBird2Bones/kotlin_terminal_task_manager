@@ -159,6 +159,14 @@ abstract class AbstractListNavigationPane<A>(
         cursor = cursor.withRelativeRow(1)
     }
 
+    protected fun removeCurrent() {
+        if(items.isEmpty()) return
+        if(items.hasPrevious()) {
+            cursor = cursor.withRelativeRow(-1)
+        }
+        items.remove()
+    }
+
     override fun prev() {
         if (!items.hasPrevious()) {
             return
@@ -271,10 +279,7 @@ class ProjectPane(
     override fun processDelete() {
         items.current()?.run {
             destruct()
-            items.remove()
-            if(cursor.row > 0){
-                cursor.withRelativeRow(-1)
-            }
+            removeCurrent()
             taskPane.items = VisibleListElements(items.current()?.tasks()?.toList() ?: emptyList())
             draw()
             screen.refresh()
@@ -295,7 +300,7 @@ class ProjectPane(
 
             RenameProcessing.Succeed -> {
                 items.current()?.name()?.let { name ->
-                    items.remove()
+                    removeCurrent()
                     if (name == "") {
                         cursor = cursor.withRelativeRow(-1)
                     } else {
@@ -305,6 +310,7 @@ class ProjectPane(
                                 ValidatedDirectory.create(projectPath).underlying
                             )
                         )
+                        next()
                     }
                 }
             }
